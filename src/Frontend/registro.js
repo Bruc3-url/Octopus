@@ -20,7 +20,8 @@
  *    `fontFamily: 'PlusJakartaSans_400Regular'` (etc.) a cada entrada de TYPE.
  */
 
-import React, { useState } from 'react';
+import { router } from "expo-router";
+import { useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -30,33 +31,32 @@ import {
   Text,
   TextInput,
   View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 /* ------------------------------------------------------------------ */
 /* Tokens de diseño (extraídos del tailwind.config del mockup)         */
 /* ------------------------------------------------------------------ */
 
 const COLORS = {
-  primary: '#006591',
-  onPrimary: '#ffffff',
-  primaryContainer: '#0ea5e9',
-  onPrimaryContainer: '#003751',
-  surface: '#faf8ff',
-  surfaceContainerLowest: '#ffffff',
-  surfaceContainerLow: '#f2f3ff',
-  surfaceContainer: '#eaedff',
-  surfaceContainerHigh: '#e2e7ff',
-  onSurface: '#131b2e',
-  onSurfaceVariant: '#3e4850',
-  outline: '#6e7881',
-  outlineVariant: '#bec8d2',
-  tertiary: '#006c49',
-  tertiaryContainer: '#00b17b',
-  secondary: '#9d4300',
-  secondaryContainer: '#fd761a',
-  error: '#ba1a1a',
+  primary: "#006591",
+  onPrimary: "#ffffff",
+  primaryContainer: "#0ea5e9",
+  onPrimaryContainer: "#003751",
+  surface: "#faf8ff",
+  surfaceContainerLowest: "#ffffff",
+  surfaceContainerLow: "#f2f3ff",
+  surfaceContainer: "#eaedff",
+  surfaceContainerHigh: "#e2e7ff",
+  onSurface: "#131b2e",
+  onSurfaceVariant: "#3e4850",
+  outline: "#6e7881",
+  outlineVariant: "#bec8d2",
+  tertiary: "#006c49",
+  tertiaryContainer: "#00b17b",
+  secondary: "#9d4300",
+  secondaryContainer: "#fd761a",
+  error: "#ba1a1a",
 };
 
 const SPACE = { xs: 4, sm: 8, md: 16, lg: 24, xl: 40, margin: 20 };
@@ -64,16 +64,41 @@ const RADIUS = { md: 16, lg: 32, full: 999 };
 
 // Escala tipográfica del mockup (size / lineHeight / weight / letterSpacing).
 const TYPE = {
-  headlineLgMobile: { fontSize: 24, lineHeight: 32, fontWeight: '700', letterSpacing: -0.48 },
-  headlineSm: { fontSize: 18, lineHeight: 26, fontWeight: '600', letterSpacing: -0.18 },
-  bodyMd: { fontSize: 14, lineHeight: 20, fontWeight: '400' },
-  bodySm: { fontSize: 12, lineHeight: 18, fontWeight: '400' },
-  labelLg: { fontSize: 14, lineHeight: 20, fontWeight: '600', letterSpacing: 0.14 },
-  labelMd: { fontSize: 12, lineHeight: 16, fontWeight: '600', letterSpacing: 0.24 },
-  labelSm: { fontSize: 10, lineHeight: 14, fontWeight: '700', letterSpacing: 0.4 },
+  headlineLgMobile: {
+    fontSize: 24,
+    lineHeight: 32,
+    fontWeight: "700",
+    letterSpacing: -0.48,
+  },
+  headlineSm: {
+    fontSize: 18,
+    lineHeight: 26,
+    fontWeight: "600",
+    letterSpacing: -0.18,
+  },
+  bodyMd: { fontSize: 14, lineHeight: 20, fontWeight: "400" },
+  bodySm: { fontSize: 12, lineHeight: 18, fontWeight: "400" },
+  labelLg: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "600",
+    letterSpacing: 0.14,
+  },
+  labelMd: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "600",
+    letterSpacing: 0.24,
+  },
+  labelSm: {
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: "700",
+    letterSpacing: 0.4,
+  },
 };
 
-const INACTIVE_BAR = 'rgba(190, 200, 210, 0.4)'; // outline-variant / 40
+const INACTIVE_BAR = "rgba(190, 200, 210, 0.4)"; // outline-variant / 40
 
 /* ------------------------------------------------------------------ */
 /* Validación                                                          */
@@ -104,16 +129,21 @@ function Icon({ name, size = 20, color = COLORS.outline, stroke = 1.9 }) {
   const s = (n) => n * k;
   const line = Math.max(1, s(stroke));
   const bar = {
-    position: 'absolute',
+    position: "absolute",
     height: line,
     borderRadius: line / 2,
     backgroundColor: color,
   };
 
-  const frame = { width: size, height: size, alignItems: 'center', justifyContent: 'center' };
+  const frame = {
+    width: size,
+    height: size,
+    alignItems: "center",
+    justifyContent: "center",
+  };
 
   switch (name) {
-    case 'chevronLeft':
+    case "chevronLeft":
       return (
         <View style={frame}>
           <View
@@ -123,20 +153,22 @@ function Icon({ name, size = 20, color = COLORS.outline, stroke = 1.9 }) {
               borderLeftWidth: line,
               borderBottomWidth: line,
               borderColor: color,
-              transform: [{ rotate: '-45deg' }],
+              transform: [{ rotate: "-45deg" }],
               marginLeft: s(1.5),
             }}
           />
         </View>
       );
 
-    case 'arrowRight':
+    case "arrowRight":
       return (
         <View style={frame}>
-          <View style={[bar, { width: s(12), left: s(3), top: s(10) - line / 2 }]} />
+          <View
+            style={[bar, { width: s(12), left: s(3), top: s(10) - line / 2 }]}
+          />
           <View
             style={{
-              position: 'absolute',
+              position: "absolute",
               width: s(7),
               height: s(7),
               left: s(8.6),
@@ -144,34 +176,74 @@ function Icon({ name, size = 20, color = COLORS.outline, stroke = 1.9 }) {
               borderTopWidth: line,
               borderRightWidth: line,
               borderColor: color,
-              transform: [{ rotate: '45deg' }],
+              transform: [{ rotate: "45deg" }],
             }}
           />
         </View>
       );
 
-    case 'check':
+    case "check":
       return (
         <View style={frame}>
-          <View style={[bar, { width: s(5.6), left: s(3.2), top: s(11.1), transform: [{ rotate: '45deg' }] }]} />
-          <View style={[bar, { width: s(12), left: s(6), top: s(9.5), transform: [{ rotate: '-48deg' }] }]} />
+          <View
+            style={[
+              bar,
+              {
+                width: s(5.6),
+                left: s(3.2),
+                top: s(11.1),
+                transform: [{ rotate: "45deg" }],
+              },
+            ]}
+          />
+          <View
+            style={[
+              bar,
+              {
+                width: s(12),
+                left: s(6),
+                top: s(9.5),
+                transform: [{ rotate: "-48deg" }],
+              },
+            ]}
+          />
         </View>
       );
 
-    case 'close':
+    case "close":
       return (
         <View style={frame}>
-          <View style={[bar, { width: s(14.1), left: s(2.9), top: s(9.05), transform: [{ rotate: '45deg' }] }]} />
-          <View style={[bar, { width: s(14.1), left: s(2.9), top: s(9.05), transform: [{ rotate: '-45deg' }] }]} />
+          <View
+            style={[
+              bar,
+              {
+                width: s(14.1),
+                left: s(2.9),
+                top: s(9.05),
+                transform: [{ rotate: "45deg" }],
+              },
+            ]}
+          />
+          <View
+            style={[
+              bar,
+              {
+                width: s(14.1),
+                left: s(2.9),
+                top: s(9.05),
+                transform: [{ rotate: "-45deg" }],
+              },
+            ]}
+          />
         </View>
       );
 
-    case 'person':
+    case "person":
       return (
         <View style={frame}>
           <View
             style={{
-              position: 'absolute',
+              position: "absolute",
               top: s(3),
               width: s(7),
               height: s(7),
@@ -182,7 +254,7 @@ function Icon({ name, size = 20, color = COLORS.outline, stroke = 1.9 }) {
           />
           <View
             style={{
-              position: 'absolute',
+              position: "absolute",
               top: s(11.5),
               width: s(13),
               height: s(7),
@@ -196,12 +268,12 @@ function Icon({ name, size = 20, color = COLORS.outline, stroke = 1.9 }) {
         </View>
       );
 
-    case 'lock':
+    case "lock":
       return (
         <View style={frame}>
           <View
             style={{
-              position: 'absolute',
+              position: "absolute",
               top: s(3),
               width: s(8),
               height: s(8),
@@ -214,7 +286,7 @@ function Icon({ name, size = 20, color = COLORS.outline, stroke = 1.9 }) {
           />
           <View
             style={{
-              position: 'absolute',
+              position: "absolute",
               top: s(9),
               width: s(12),
               height: s(9),
@@ -226,12 +298,12 @@ function Icon({ name, size = 20, color = COLORS.outline, stroke = 1.9 }) {
         </View>
       );
 
-    case 'eye':
+    case "eye":
       return (
         <View style={frame}>
           <View
             style={{
-              position: 'absolute',
+              position: "absolute",
               top: s(4.5),
               width: s(17),
               height: s(11),
@@ -242,7 +314,7 @@ function Icon({ name, size = 20, color = COLORS.outline, stroke = 1.9 }) {
           />
           <View
             style={{
-              position: 'absolute',
+              position: "absolute",
               top: s(7.75),
               width: s(4.5),
               height: s(4.5),
@@ -253,12 +325,12 @@ function Icon({ name, size = 20, color = COLORS.outline, stroke = 1.9 }) {
         </View>
       );
 
-    case 'mail':
+    case "mail":
       return (
         <View style={frame}>
           <View
             style={{
-              position: 'absolute',
+              position: "absolute",
               top: s(4),
               width: s(16),
               height: s(12),
@@ -267,45 +339,105 @@ function Icon({ name, size = 20, color = COLORS.outline, stroke = 1.9 }) {
               borderColor: color,
             }}
           />
-          <View style={[bar, { width: s(6.3), left: s(4.3), top: s(8), transform: [{ rotate: '45deg' }] }]} />
-          <View style={[bar, { width: s(6.3), left: s(9.4), top: s(8), transform: [{ rotate: '-45deg' }] }]} />
+          <View
+            style={[
+              bar,
+              {
+                width: s(6.3),
+                left: s(4.3),
+                top: s(8),
+                transform: [{ rotate: "45deg" }],
+              },
+            ]}
+          />
+          <View
+            style={[
+              bar,
+              {
+                width: s(6.3),
+                left: s(9.4),
+                top: s(8),
+                transform: [{ rotate: "-45deg" }],
+              },
+            ]}
+          />
         </View>
       );
 
-    case 'cloud':
-      return (
-        <View style={frame}>
-          <View
-            style={{ position: 'absolute', top: s(7), left: s(2.5), width: s(6), height: s(6), borderRadius: s(3), backgroundColor: color }}
-          />
-          <View
-            style={{ position: 'absolute', top: s(4), left: s(6), width: s(9), height: s(9), borderRadius: s(4.5), backgroundColor: color }}
-          />
-          <View
-            style={{ position: 'absolute', top: s(6), left: s(11.5), width: s(7), height: s(7), borderRadius: s(3.5), backgroundColor: color }}
-          />
-          <View
-            style={{ position: 'absolute', top: s(9), left: s(2.5), width: s(16), height: s(6), borderRadius: s(3), backgroundColor: color }}
-          />
-        </View>
-      );
-
-    case 'spark':
+    case "cloud":
       return (
         <View style={frame}>
           <View
             style={{
-              position: 'absolute',
+              position: "absolute",
+              top: s(7),
+              left: s(2.5),
+              width: s(6),
+              height: s(6),
+              borderRadius: s(3),
+              backgroundColor: color,
+            }}
+          />
+          <View
+            style={{
+              position: "absolute",
+              top: s(4),
+              left: s(6),
+              width: s(9),
+              height: s(9),
+              borderRadius: s(4.5),
+              backgroundColor: color,
+            }}
+          />
+          <View
+            style={{
+              position: "absolute",
+              top: s(6),
+              left: s(11.5),
+              width: s(7),
+              height: s(7),
+              borderRadius: s(3.5),
+              backgroundColor: color,
+            }}
+          />
+          <View
+            style={{
+              position: "absolute",
+              top: s(9),
+              left: s(2.5),
+              width: s(16),
+              height: s(6),
+              borderRadius: s(3),
+              backgroundColor: color,
+            }}
+          />
+        </View>
+      );
+
+    case "spark":
+      return (
+        <View style={frame}>
+          <View
+            style={{
+              position: "absolute",
               top: s(6.5),
               left: s(6.5),
               width: s(7),
               height: s(7),
               backgroundColor: color,
-              transform: [{ rotate: '45deg' }],
+              transform: [{ rotate: "45deg" }],
             }}
           />
           <View
-            style={{ position: 'absolute', top: s(3), left: s(13), width: s(3), height: s(3), borderRadius: s(1.5), backgroundColor: color }}
+            style={{
+              position: "absolute",
+              top: s(3),
+              left: s(13),
+              width: s(3),
+              height: s(3),
+              borderRadius: s(1.5),
+              backgroundColor: color,
+            }}
           />
         </View>
       );
@@ -325,11 +457,13 @@ function StatusDot({ checked, size = 16, color = COLORS.tertiaryContainer }) {
         borderRadius: size / 2,
         borderWidth: 1.5,
         borderColor: checked ? color : COLORS.outline,
-        alignItems: 'center',
-        justifyContent: 'center',
+        alignItems: "center",
+        justifyContent: "center",
       }}
     >
-      {checked ? <Icon name="check" size={size * 0.72} color={color} stroke={2.2} /> : null}
+      {checked ? (
+        <Icon name="check" size={size * 0.72} color={color} stroke={2.2} />
+      ) : null}
     </View>
   );
 }
@@ -338,12 +472,25 @@ function StatusDot({ checked, size = 16, color = COLORS.tertiaryContainer }) {
 /* Campo de texto reutilizable                                         */
 /* ------------------------------------------------------------------ */
 
-function TextField({ label, hint, hintColor, icon, iconColor, style, inputStyle, ...inputProps }) {
+function TextField({
+  label,
+  hint,
+  hintColor,
+  icon,
+  iconColor,
+  style,
+  inputStyle,
+  ...inputProps
+}) {
   return (
     <View style={styles.field}>
       <View style={styles.labelRow}>
         <Text style={styles.label}>{label}</Text>
-        {hint ? <Text style={[styles.hint, hintColor ? { color: hintColor } : null]}>{hint}</Text> : null}
+        {hint ? (
+          <Text style={[styles.hint, hintColor ? { color: hintColor } : null]}>
+            {hint}
+          </Text>
+        ) : null}
       </View>
       <View style={styles.inputShell}>
         <TextInput
@@ -380,71 +527,85 @@ export default function RegistroScreen({
   onLogin = undefined,
   onSubmit = undefined,
 }) {
-  const [alias, setAlias] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [alias, setAlias] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [terms, setTerms] = useState(false);
   const [passwordVisible, setPasswordVisible] = useState(false);
 
   const emailValid = isEmailValid(email);
   const rules = passwordRules(password);
-  const score = Number(rules.length) + Number(rules.symbol) + Number(rules.upper);
-  const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
+  const score =
+    Number(rules.length) + Number(rules.symbol) + Number(rules.upper);
+  const passwordsMatch =
+    confirmPassword.length > 0 && password === confirmPassword;
 
   const canSubmit =
-    alias.trim().length > 0 && emailValid && score === 3 && passwordsMatch && terms;
+    alias.trim().length > 0 &&
+    emailValid &&
+    score === 3 &&
+    passwordsMatch &&
+    terms;
 
   /* --- email: estado en vivo --- */
-  let emailHint = 'Requerido';
+  let emailHint = "Requerido";
   let emailHintColor = COLORS.outline;
-  let emailIcon = 'mail';
+  let emailIcon = "mail";
   let emailIconColor = COLORS.outline;
   if (email.length > 0) {
     if (emailValid) {
-      emailHint = 'Válido';
+      emailHint = "Válido";
       emailHintColor = COLORS.tertiary;
-      emailIcon = 'check';
+      emailIcon = "check";
       emailIconColor = COLORS.tertiaryContainer;
     } else {
-      emailHint = 'Inválido';
+      emailHint = "Inválido";
       emailHintColor = COLORS.error;
-      emailIcon = 'close';
+      emailIcon = "close";
       emailIconColor = COLORS.error;
     }
   }
 
   /* --- contraseña: medidor --- */
   const strength = [
-    { label: 'Seguridad', color: COLORS.outline, bar: null },
-    { label: 'Débil', color: COLORS.secondary, bar: COLORS.secondaryContainer },
-    { label: 'Buena', color: COLORS.primary, bar: COLORS.primaryContainer },
-    { label: 'Excelente', color: COLORS.tertiary, bar: COLORS.tertiaryContainer },
+    { label: "Seguridad", color: COLORS.outline, bar: null },
+    { label: "Débil", color: COLORS.secondary, bar: COLORS.secondaryContainer },
+    { label: "Buena", color: COLORS.primary, bar: COLORS.primaryContainer },
+    {
+      label: "Excelente",
+      color: COLORS.tertiary,
+      bar: COLORS.tertiaryContainer,
+    },
   ][score];
 
   /* --- confirmación --- */
-  let matchHint = 'Sin verificar';
+  let matchHint = "Sin verificar";
   let matchHintColor = COLORS.outline;
-  let matchIcon = 'lock';
+  let matchIcon = "lock";
   let matchIconColor = COLORS.outline;
   if (confirmPassword.length > 0) {
     if (passwordsMatch) {
-      matchHint = 'Coincide';
+      matchHint = "Coincide";
       matchHintColor = COLORS.tertiary;
-      matchIcon = 'check';
+      matchIcon = "check";
       matchIconColor = COLORS.tertiaryContainer;
     } else {
-      matchHint = 'No coincide';
+      matchHint = "No coincide";
       matchHintColor = COLORS.error;
-      matchIcon = 'close';
+      matchIcon = "close";
       matchIconColor = COLORS.error;
     }
   }
 
   const requirements = [
-    { key: 'length', label: 'Mínimo 8 caracteres', done: rules.length },
-    { key: 'symbol', label: 'Al menos un número o símbolo especial', done: rules.symbol },
-    { key: 'upper', label: 'Una letra mayúscula', done: rules.upper },
+    { key: "length", label: "Mínimo 8 caracteres", done: rules.length },
+    {
+      key: "symbol",
+      label: "Al menos un número o símbolo especial",
+      done: rules.symbol,
+    },
+    { key: "upper", label: "Una letra mayúscula", done: rules.upper },
   ];
 
   const handleBack = () => {
@@ -458,7 +619,11 @@ export default function RegistroScreen({
   const handleSubmit = () => {
     if (!canSubmit) return;
 
-    const payload = { alias: alias.trim(), email: email.trim().toLowerCase(), password };
+    const payload = {
+      alias: alias.trim(),
+      email: email.trim().toLowerCase(),
+      password,
+    };
 
     if (onSubmit) {
       onSubmit(payload);
@@ -474,18 +639,21 @@ export default function RegistroScreen({
     //     options: { data: { alias: payload.alias } },
     //   });
     //
-    console.log('[registro] alta solicitada', payload);
+    console.log("[registro] alta solicitada", payload);
   };
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Volver"
           hitSlop={8}
           onPress={handleBack}
-          style={({ pressed }) => [styles.headerButton, pressed && styles.headerButtonPressed]}
+          style={({ pressed }) => [
+            styles.headerButton,
+            pressed && styles.headerButtonPressed,
+          ]}
         >
           <Icon name="chevronLeft" size={20} color={COLORS.onSurface} />
         </Pressable>
@@ -497,7 +665,7 @@ export default function RegistroScreen({
 
       <KeyboardAvoidingView
         style={styles.body}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={64}
       >
         <ScrollView
@@ -517,8 +685,9 @@ export default function RegistroScreen({
               <Icon name="spark" size={18} color={COLORS.primary} />
             </View>
             <Text style={styles.heroText}>
-              ¡Hola! Soy <Text style={styles.heroStrong}>Octy</Text>. Configura tus credenciales
-              para empezar a sincronizar tus tentáculos productivos.
+              ¡Hola! Soy <Text style={styles.heroStrong}>Octy</Text>. Configura
+              tus credenciales para empezar a sincronizar tus tentáculos
+              productivos.
             </Text>
           </View>
 
@@ -556,7 +725,9 @@ export default function RegistroScreen({
             <View style={styles.field}>
               <View style={styles.labelRow}>
                 <Text style={styles.label}>Contraseña</Text>
-                <Text style={[styles.hint, { color: strength.color }]}>{strength.label}</Text>
+                <Text style={[styles.hint, { color: strength.color }]}>
+                  {strength.label}
+                </Text>
               </View>
 
               <View style={styles.inputShell}>
@@ -577,11 +748,16 @@ export default function RegistroScreen({
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={
-                    passwordVisible ? 'Ocultar contraseña' : 'Mostrar contraseña'
+                    passwordVisible
+                      ? "Ocultar contraseña"
+                      : "Mostrar contraseña"
                   }
                   hitSlop={8}
                   onPress={() => setPasswordVisible((visible) => !visible)}
-                  style={({ pressed }) => [styles.eyeButton, pressed && styles.eyeButtonPressed]}
+                  style={({ pressed }) => [
+                    styles.eyeButton,
+                    pressed && styles.eyeButtonPressed,
+                  ]}
                 >
                   <Icon
                     name="eye"
@@ -597,7 +773,12 @@ export default function RegistroScreen({
                     key={index}
                     style={[
                       styles.strengthSegment,
-                      { backgroundColor: index < score && strength.bar ? strength.bar : INACTIVE_BAR },
+                      {
+                        backgroundColor:
+                          index < score && strength.bar
+                            ? strength.bar
+                            : INACTIVE_BAR,
+                      },
                     ]}
                   />
                 ))}
@@ -645,11 +826,20 @@ export default function RegistroScreen({
               style={styles.termsRow}
             >
               <View style={[styles.checkbox, terms && styles.checkboxChecked]}>
-                {terms ? <Icon name="check" size={16} color={COLORS.onPrimary} stroke={2.2} /> : null}
+                {terms ? (
+                  <Icon
+                    name="check"
+                    size={16}
+                    color={COLORS.onPrimary}
+                    stroke={2.2}
+                  />
+                ) : null}
               </View>
               <Text style={styles.termsText}>
-                Acepto los <Text style={styles.termsLink}>Términos de Servicio</Text> y la{' '}
-                <Text style={styles.termsLink}>Política de Privacidad</Text> de Octopus.
+                Acepto los{" "}
+                <Text style={styles.termsLink}>Términos de Servicio</Text> y la{" "}
+                <Text style={styles.termsLink}>Política de Privacidad</Text> de
+                Octopus.
               </Text>
             </Pressable>
 
@@ -666,7 +856,12 @@ export default function RegistroScreen({
               ]}
             >
               <Text style={styles.submitLabel}>Crear Cuenta</Text>
-              <Icon name="arrowRight" size={18} color={COLORS.onPrimary} stroke={2} />
+              <Icon
+                name="arrowRight"
+                size={18}
+                color={COLORS.onPrimary}
+                stroke={2}
+              />
             </Pressable>
           </View>
 
@@ -677,8 +872,8 @@ export default function RegistroScreen({
             <View style={styles.syncBody}>
               <Text style={styles.syncTitle}>Sincronización Silenciosa</Text>
               <Text style={styles.syncText}>
-                Tus datos se sincronizan de forma segura en la nube para mantener a salvo tus
-                proyectos y rachas.
+                Tus datos se sincronizan de forma segura en la nube para
+                mantener a salvo tus proyectos y rachas.
               </Text>
             </View>
           </View>
@@ -711,11 +906,11 @@ const styles = StyleSheet.create({
   header: {
     height: 64,
     paddingHorizontal: SPACE.margin,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(250, 248, 255, 0.96)',
-    shadowColor: '#000',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "rgba(250, 248, 255, 0.96)",
+    shadowColor: "#000",
     shadowOpacity: 0.04,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 1 },
@@ -725,7 +920,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     ...TYPE.headlineSm,
     flex: 1,
-    textAlign: 'center',
+    textAlign: "center",
     color: COLORS.onSurface,
   },
   headerButton: {
@@ -733,8 +928,8 @@ const styles = StyleSheet.create({
     height: 44,
     marginLeft: -SPACE.xs,
     borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerButtonPressed: { backgroundColor: COLORS.surfaceContainerHigh },
   headerSpacer: { width: 44 },
@@ -748,17 +943,21 @@ const styles = StyleSheet.create({
 
   heading: { marginBottom: SPACE.lg },
   title: { ...TYPE.headlineLgMobile, color: COLORS.onSurface },
-  subtitle: { ...TYPE.bodyMd, color: COLORS.onSurfaceVariant, marginTop: SPACE.xs },
+  subtitle: {
+    ...TYPE.bodyMd,
+    color: COLORS.onSurfaceVariant,
+    marginTop: SPACE.xs,
+  },
 
   heroCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: SPACE.sm,
     backgroundColor: COLORS.surfaceContainerLow,
     borderRadius: RADIUS.lg,
     padding: SPACE.md,
     marginBottom: SPACE.md,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.03,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 1 },
@@ -768,21 +967,25 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(14, 165, 233, 0.2)', // primary-container / 20
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(14, 165, 233, 0.2)", // primary-container / 20
+    alignItems: "center",
+    justifyContent: "center",
   },
   heroText: { ...TYPE.bodySm, flex: 1, color: COLORS.onSurfaceVariant },
-  heroStrong: { color: COLORS.onSurface, fontWeight: '600' },
+  heroStrong: { color: COLORS.onSurface, fontWeight: "600" },
 
   form: { gap: SPACE.md },
 
   field: { gap: SPACE.xs },
-  labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  labelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   label: { ...TYPE.labelMd, color: COLORS.onSurface },
   hint: { ...TYPE.labelSm, color: COLORS.outline },
 
-  inputShell: { justifyContent: 'center' },
+  inputShell: { justifyContent: "center" },
   input: {
     height: 48,
     paddingHorizontal: SPACE.md,
@@ -790,7 +993,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surfaceContainerLowest,
     ...TYPE.bodyMd,
     color: COLORS.onSurface,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.04,
     shadowRadius: 5,
     shadowOffset: { width: 0, height: 1 },
@@ -798,27 +1001,32 @@ const styles = StyleSheet.create({
   },
   inputWithIcon: { paddingRight: 48 },
   inputWithRightButton: { paddingRight: 52 },
-  inputIcon: { position: 'absolute', right: SPACE.md, alignItems: 'center', justifyContent: 'center' },
+  inputIcon: {
+    position: "absolute",
+    right: SPACE.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
   eyeButton: {
-    position: 'absolute',
+    position: "absolute",
     right: 12,
     width: 32,
     height: 32,
     borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   eyeButtonPressed: { backgroundColor: COLORS.surfaceContainerHigh },
 
   strengthTrack: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: SPACE.xs,
     height: 6,
     marginTop: SPACE.xs,
     borderRadius: RADIUS.full,
     backgroundColor: COLORS.surfaceContainerHigh,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   strengthSegment: { flex: 1, borderRadius: RADIUS.full },
 
@@ -829,33 +1037,43 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
     backgroundColor: COLORS.surfaceContainerLow,
   },
-  requirementRow: { flexDirection: 'row', alignItems: 'center', gap: SPACE.xs },
+  requirementRow: { flexDirection: "row", alignItems: "center", gap: SPACE.xs },
   requirementText: { ...TYPE.bodySm, flex: 1, color: COLORS.onSurfaceVariant },
 
-  termsRow: { flexDirection: 'row', alignItems: 'flex-start', gap: SPACE.sm, marginTop: SPACE.xs },
+  termsRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: SPACE.sm,
+    marginTop: SPACE.xs,
+  },
   checkbox: {
     width: 24,
     height: 24,
     borderRadius: 12,
     marginTop: 2,
     backgroundColor: COLORS.surfaceContainerHigh,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   checkboxChecked: { backgroundColor: COLORS.primaryContainer },
-  termsText: { ...TYPE.bodySm, flex: 1, lineHeight: 16, color: COLORS.onSurfaceVariant },
-  termsLink: { color: COLORS.primary, fontWeight: '600' },
+  termsText: {
+    ...TYPE.bodySm,
+    flex: 1,
+    lineHeight: 16,
+    color: COLORS.onSurfaceVariant,
+  },
+  termsLink: { color: COLORS.primary, fontWeight: "600" },
 
   submitButton: {
     height: 48,
     marginTop: SPACE.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: SPACE.xs,
     borderRadius: RADIUS.full,
     backgroundColor: COLORS.primaryContainer,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.12,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
@@ -866,8 +1084,8 @@ const styles = StyleSheet.create({
   submitLabel: { ...TYPE.labelLg, color: COLORS.onPrimary },
 
   syncCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     gap: SPACE.sm,
     marginTop: SPACE.lg,
     padding: SPACE.md,
@@ -879,17 +1097,17 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: 14,
     backgroundColor: COLORS.surfaceContainerLowest,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   syncBody: { flex: 1 },
   syncTitle: { ...TYPE.labelMd, color: COLORS.onSurface },
   syncText: { ...TYPE.bodySm, marginTop: 2, color: COLORS.onSurfaceVariant },
 
   footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: SPACE.xs,
     paddingVertical: SPACE.lg,
   },

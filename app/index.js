@@ -1,690 +1,1117 @@
-import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import {
-  cerrarSesion,
-  escucharCambiosDeSesion,
-  iniciarSesion,
-  obtenerSesion,
-  registrarUsuario,
-} from "../src/Backend";
+/**
+ * Pantalla de registro (Sign Up) de Octopus.
+ *
+ * Conversión a React Native / Expo del diseño HTML + Tailwind exportado del mockup.
+ *
+ * Qué se conservó:
+ *  - la paleta exacta del `tailwind.config` (primary, surface, tertiary, error...),
+ *    la escala tipográfica, los radios (16 / 32 / full) y los espaciados
+ *    (space-xs 4, sm 8, md 16, lg 24, xl 40, margin 20);
+ *  - toda la lógica de validación: email en vivo, medidor de contraseña de 3 reglas,
+ *    coincidencia de contraseñas, términos y botón habilitado sólo si todo pasa.
+ *
+ * Qué cambió (inevitable al pasar de HTML a React Native):
+ *  - Tailwind -> StyleSheet; las clases de layout se fijan en los estilos;
+ *  - los Material Symbols (webfont de Google) -> componente <Icon /> dibujado con
+ *    Views, sin dependencias nuevas. Para usar iconos reales, instala
+ *    `@expo/vector-icons` y reemplaza únicamente el cuerpo de <Icon />;
+ *  - Plus Jakarta Sans -> fuente del sistema con los mismos tamaños y pesos. Para
+ *    activarla: `npx expo install @expo-google-fonts/plus-jakarta-sans` y añade
+ *    `fontFamily: 'PlusJakartaSans_400Regular'` (etc.) a cada entrada de TYPE.
+ */
 
-const colores = {
-  fondo: "#faf8ff",
-  tarjeta: "#ffffff",
-  suave: "#f2f3ff",
-  texto: "#131b2e",
-  secundario: "#3e4850",
-  tenue: "#6e7881",
-  primario: "#0ea5e9",
-  verde: "#006c49",
+import { router } from "expo-router";
+import { useState } from "react";
+import {
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+/* ------------------------------------------------------------------ */
+/* Tokens de diseño (extraídos del tailwind.config del mockup)         */
+/* ------------------------------------------------------------------ */
+
+const COLORS = {
+  primary: "#006591",
+  onPrimary: "#ffffff",
+  primaryContainer: "#0ea5e9",
+  onPrimaryContainer: "#003751",
+  surface: "#faf8ff",
+  surfaceContainerLowest: "#ffffff",
+  surfaceContainerLow: "#f2f3ff",
+  surfaceContainer: "#eaedff",
+  surfaceContainerHigh: "#e2e7ff",
+  onSurface: "#131b2e",
+  onSurfaceVariant: "#3e4850",
+  outline: "#6e7881",
+  outlineVariant: "#bec8d2",
+  tertiary: "#006c49",
+  tertiaryContainer: "#00b17b",
+  secondary: "#9d4300",
+  secondaryContainer: "#fd761a",
   error: "#ba1a1a",
 };
 
-function textoError(error, alternativa) {
-  return error instanceof Error ? error.message : alternativa;
+const SPACE = { xs: 4, sm: 8, md: 16, lg: 24, xl: 40, margin: 20 };
+const RADIUS = { md: 16, lg: 32, full: 999 };
+
+// Escala tipográfica del mockup (size / lineHeight / weight / letterSpacing).
+const TYPE = {
+  headlineLgMobile: {
+    fontSize: 24,
+    lineHeight: 32,
+    fontWeight: "700",
+    letterSpacing: -0.48,
+  },
+  headlineSm: {
+    fontSize: 18,
+    lineHeight: 26,
+    fontWeight: "600",
+    letterSpacing: -0.18,
+  },
+  bodyMd: { fontSize: 14, lineHeight: 20, fontWeight: "400" },
+  bodySm: { fontSize: 12, lineHeight: 18, fontWeight: "400" },
+  labelLg: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "600",
+    letterSpacing: 0.14,
+  },
+  labelMd: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "600",
+    letterSpacing: 0.24,
+  },
+  labelSm: {
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: "700",
+    letterSpacing: 0.4,
+  },
+};
+
+const INACTIVE_BAR = "rgba(190, 200, 210, 0.4)"; // outline-variant / 40
+
+/* ------------------------------------------------------------------ */
+/* Validación                                                          */
+/* ------------------------------------------------------------------ */
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const NUMBER_OR_SYMBOL_RE = /[0-9!@#$%^&*(),.?":{}|<>]/;
+const UPPERCASE_RE = /[A-Z]/;
+
+const isEmailValid = (value) => EMAIL_RE.test(value.trim());
+
+const passwordRules = (value) => ({
+  length: value.length >= 8,
+  symbol: NUMBER_OR_SYMBOL_RE.test(value),
+  upper: UPPERCASE_RE.test(value),
+});
+
+/* ------------------------------------------------------------------ */
+/* Iconos (sustitutos de Material Symbols, sin dependencias)           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Iconos geométricos dibujados con Views. Se pintan en un lienzo de 20x20 y se
+ * escalan a `size`. Cambia sólo este componente si prefieres @expo/vector-icons.
+ */
+function Icon({ name, size = 20, color = COLORS.outline, stroke = 1.9 }) {
+  const k = size / 20;
+  const s = (n) => n * k;
+  const line = Math.max(1, s(stroke));
+  const bar = {
+    position: "absolute",
+    height: line,
+    borderRadius: line / 2,
+    backgroundColor: color,
+  };
+
+  const frame = {
+    width: size,
+    height: size,
+    alignItems: "center",
+    justifyContent: "center",
+  };
+
+  switch (name) {
+    case "chevronLeft":
+      return (
+        <View style={frame}>
+          <View
+            style={{
+              width: s(9),
+              height: s(9),
+              borderLeftWidth: line,
+              borderBottomWidth: line,
+              borderColor: color,
+              transform: [{ rotate: "-45deg" }],
+              marginLeft: s(1.5),
+            }}
+          />
+        </View>
+      );
+
+    case "arrowRight":
+      return (
+        <View style={frame}>
+          <View
+            style={[bar, { width: s(12), left: s(3), top: s(10) - line / 2 }]}
+          />
+          <View
+            style={{
+              position: "absolute",
+              width: s(7),
+              height: s(7),
+              left: s(8.6),
+              top: s(6.5),
+              borderTopWidth: line,
+              borderRightWidth: line,
+              borderColor: color,
+              transform: [{ rotate: "45deg" }],
+            }}
+          />
+        </View>
+      );
+
+    case "check":
+      return (
+        <View style={frame}>
+          <View
+            style={[
+              bar,
+              {
+                width: s(5.6),
+                left: s(3.2),
+                top: s(11.1),
+                transform: [{ rotate: "45deg" }],
+              },
+            ]}
+          />
+          <View
+            style={[
+              bar,
+              {
+                width: s(12),
+                left: s(6),
+                top: s(9.5),
+                transform: [{ rotate: "-48deg" }],
+              },
+            ]}
+          />
+        </View>
+      );
+
+    case "close":
+      return (
+        <View style={frame}>
+          <View
+            style={[
+              bar,
+              {
+                width: s(14.1),
+                left: s(2.9),
+                top: s(9.05),
+                transform: [{ rotate: "45deg" }],
+              },
+            ]}
+          />
+          <View
+            style={[
+              bar,
+              {
+                width: s(14.1),
+                left: s(2.9),
+                top: s(9.05),
+                transform: [{ rotate: "-45deg" }],
+              },
+            ]}
+          />
+        </View>
+      );
+
+    case "person":
+      return (
+        <View style={frame}>
+          <View
+            style={{
+              position: "absolute",
+              top: s(3),
+              width: s(7),
+              height: s(7),
+              borderRadius: s(3.5),
+              borderWidth: line,
+              borderColor: color,
+            }}
+          />
+          <View
+            style={{
+              position: "absolute",
+              top: s(11.5),
+              width: s(13),
+              height: s(7),
+              borderWidth: line,
+              borderBottomWidth: 0,
+              borderTopLeftRadius: s(6.5),
+              borderTopRightRadius: s(6.5),
+              borderColor: color,
+            }}
+          />
+        </View>
+      );
+
+    case "lock":
+      return (
+        <View style={frame}>
+          <View
+            style={{
+              position: "absolute",
+              top: s(3),
+              width: s(8),
+              height: s(8),
+              borderWidth: line,
+              borderBottomWidth: 0,
+              borderTopLeftRadius: s(4),
+              borderTopRightRadius: s(4),
+              borderColor: color,
+            }}
+          />
+          <View
+            style={{
+              position: "absolute",
+              top: s(9),
+              width: s(12),
+              height: s(9),
+              borderRadius: s(2.5),
+              borderWidth: line,
+              borderColor: color,
+            }}
+          />
+        </View>
+      );
+
+    case "eye":
+      return (
+        <View style={frame}>
+          <View
+            style={{
+              position: "absolute",
+              top: s(4.5),
+              width: s(17),
+              height: s(11),
+              borderWidth: line,
+              borderRadius: s(5.5),
+              borderColor: color,
+            }}
+          />
+          <View
+            style={{
+              position: "absolute",
+              top: s(7.75),
+              width: s(4.5),
+              height: s(4.5),
+              borderRadius: s(2.25),
+              backgroundColor: color,
+            }}
+          />
+        </View>
+      );
+
+    case "mail":
+      return (
+        <View style={frame}>
+          <View
+            style={{
+              position: "absolute",
+              top: s(4),
+              width: s(16),
+              height: s(12),
+              borderWidth: line,
+              borderRadius: s(2),
+              borderColor: color,
+            }}
+          />
+          <View
+            style={[
+              bar,
+              {
+                width: s(6.3),
+                left: s(4.3),
+                top: s(8),
+                transform: [{ rotate: "45deg" }],
+              },
+            ]}
+          />
+          <View
+            style={[
+              bar,
+              {
+                width: s(6.3),
+                left: s(9.4),
+                top: s(8),
+                transform: [{ rotate: "-45deg" }],
+              },
+            ]}
+          />
+        </View>
+      );
+
+    case "cloud":
+      return (
+        <View style={frame}>
+          <View
+            style={{
+              position: "absolute",
+              top: s(7),
+              left: s(2.5),
+              width: s(6),
+              height: s(6),
+              borderRadius: s(3),
+              backgroundColor: color,
+            }}
+          />
+          <View
+            style={{
+              position: "absolute",
+              top: s(4),
+              left: s(6),
+              width: s(9),
+              height: s(9),
+              borderRadius: s(4.5),
+              backgroundColor: color,
+            }}
+          />
+          <View
+            style={{
+              position: "absolute",
+              top: s(6),
+              left: s(11.5),
+              width: s(7),
+              height: s(7),
+              borderRadius: s(3.5),
+              backgroundColor: color,
+            }}
+          />
+          <View
+            style={{
+              position: "absolute",
+              top: s(9),
+              left: s(2.5),
+              width: s(16),
+              height: s(6),
+              borderRadius: s(3),
+              backgroundColor: color,
+            }}
+          />
+        </View>
+      );
+
+    case "spark":
+      return (
+        <View style={frame}>
+          <View
+            style={{
+              position: "absolute",
+              top: s(6.5),
+              left: s(6.5),
+              width: s(7),
+              height: s(7),
+              backgroundColor: color,
+              transform: [{ rotate: "45deg" }],
+            }}
+          />
+          <View
+            style={{
+              position: "absolute",
+              top: s(3),
+              left: s(13),
+              width: s(3),
+              height: s(3),
+              borderRadius: s(1.5),
+              backgroundColor: color,
+            }}
+          />
+        </View>
+      );
+
+    default:
+      return <View style={frame} />;
+  }
 }
 
-export default function Index() {
-  const [modo, setModo] = useState("login");
-  const [usuario, setUsuario] = useState("");
-  const [nombre, setNombre] = useState("");
-  const [correo, setCorreo] = useState("");
-  const [password, setPassword] = useState("");
-  const [mostrarPassword, setMostrarPassword] = useState(false);
-  const [sesion, setSesion] = useState(null);
-  const [cargandoSesion, setCargandoSesion] = useState(true);
-  const [enviando, setEnviando] = useState(false);
-  const [mensaje, setMensaje] = useState(null);
-
-  useEffect(() => {
-    let activa = true;
-    const subscription = escucharCambiosDeSesion((nuevaSesion) => {
-      if (activa) setSesion(nuevaSesion);
-    });
-
-    obtenerSesion()
-      .then(({ data, error }) => {
-        if (!activa) return;
-        if (error) {
-          setMensaje({ tipo: "error", texto: error.message });
-          return;
-        }
-        setSesion(data.session);
-      })
-      .catch((error) => {
-        if (activa) {
-          setMensaje({
-            tipo: "error",
-            texto: textoError(error, "No se pudo consultar la sesión."),
-          });
-        }
-      })
-      .finally(() => {
-        if (activa) setCargandoSesion(false);
-      });
-
-    return () => {
-      activa = false;
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  async function enviarFormulario() {
-    if (!correo.trim() || !password) {
-      setMensaje({ tipo: "error", texto: "Escribe tu correo y contraseña." });
-      return;
-    }
-
-    if (
-      modo === "registro" &&
-      (!usuario.trim() || !nombre.trim() || password.length < 6)
-    ) {
-      setMensaje({
-        tipo: "error",
-        texto:
-          "Completa tu usuario y nombre. La contraseña debe tener al menos 6 caracteres.",
-      });
-      return;
-    }
-
-    setEnviando(true);
-    setMensaje(null);
-
-    try {
-      const resultado =
-        modo === "registro"
-          ? await registrarUsuario({ usuario, nombre, correo, password })
-          : await iniciarSesion({ correo, password });
-
-      if (resultado.error) {
-        setMensaje({ tipo: "error", texto: resultado.error.message });
-        return;
-      }
-
-      if (modo === "registro" && !resultado.data.session) {
-        setModo("login");
-        setMensaje({
-          tipo: "exito",
-          texto:
-            "Cuenta creada. Revisa tu correo para confirmar la dirección antes de iniciar sesión.",
-        });
-      } else {
-        setSesion(resultado.data.session);
-        setMensaje(null);
-      }
-      setPassword("");
-    } catch (error) {
-      setMensaje({
-        tipo: "error",
-        texto: textoError(error, "Ocurrió un error inesperado."),
-      });
-    } finally {
-      setEnviando(false);
-    }
-  }
-
-  async function salir() {
-    setEnviando(true);
-    setMensaje(null);
-    try {
-      const { error } = await cerrarSesion();
-      if (error) {
-        setMensaje({ tipo: "error", texto: error.message });
-      } else {
-        setSesion(null);
-        setMensaje({ tipo: "exito", texto: "Sesión cerrada." });
-      }
-    } catch (error) {
-      setMensaje({
-        tipo: "error",
-        texto: textoError(error, "No se pudo cerrar la sesión."),
-      });
-    } finally {
-      setEnviando(false);
-    }
-  }
-
-  if (cargandoSesion) {
-    return (
-      <View style={styles.centrado}>
-        <ActivityIndicator size="large" color={colores.primario} />
-        <Text style={styles.textoCarga}>Comprobando sesión...</Text>
-      </View>
-    );
-  }
-
-  const metadatos = sesion?.user?.user_metadata ?? {};
-  const nombrePerfil =
-    typeof metadatos.nombre === "string" ? metadatos.nombre : "";
-
+/** Círculo de estado: radio vacío o check relleno (radio_button_unchecked / check_circle). */
+function StatusDot({ checked, size = 16, color = COLORS.tertiaryContainer }) {
   return (
-    <KeyboardAvoidingView
-      style={styles.pantalla}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        borderWidth: 1.5,
+        borderColor: checked ? color : COLORS.outline,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
     >
-      <ScrollView
-        contentContainerStyle={styles.contenido}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.encabezado}>
-          <View style={styles.logo}>
-            <Text style={styles.logoTexto}>∞</Text>
-          </View>
-          <Text style={styles.encabezadoTexto}>
-            {sesion ? "Mi cuenta" : "Iniciar sesión"}
-          </Text>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarTexto}>
-              {sesion ? (nombrePerfil || "O").charAt(0).toUpperCase() : "O"}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.tarjetaBienvenida}>
-          <View style={styles.etiqueta}>
-            <View style={styles.puntoActivo} />
-            <Text style={styles.etiquetaTexto}>
-              {sesion ? "SANTUARIO ACTIVO" : "SANTUARIO OCTOPUS"}
-            </Text>
-          </View>
-          <Text style={styles.titulo}>
-            {sesion
-              ? `¡Hola${nombrePerfil ? `, ${nombrePerfil}` : ""}!`
-              : modo === "registro"
-                ? "Únete a Octopus"
-                : "Bienvenido de vuelta"}
-          </Text>
-          <Text style={styles.descripcion}>
-            {sesion
-              ? "Tu sesión está activa. Sigue cuidando de tus hábitos."
-              : "Ingresa a tu santuario de productividad y cuida de Octy."}
-          </Text>
-          <View style={styles.mascota}>
-            <Text style={styles.mascotaIcono}>🐙</Text>
-            <Text style={styles.mascotaNombre}>Octy</Text>
-          </View>
-        </View>
-
-        <View style={styles.tarjetaFormulario}>
-          {sesion ? (
-            <>
-              <Text style={styles.tituloFormulario}>Sesión iniciada</Text>
-              <Text style={styles.descripcionSesion}>
-                {sesion.user.email ?? "Cuenta de Octopus"}
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                disabled={enviando}
-                onPress={salir}
-                style={({ pressed }) => [
-                  styles.boton,
-                  pressed && styles.botonPresionado,
-                  enviando && styles.botonDeshabilitado,
-                ]}
-              >
-                {enviando ? (
-                  <ActivityIndicator color={colores.tarjeta} />
-                ) : (
-                  <Text style={styles.textoBoton}>Cerrar sesión</Text>
-                )}
-              </Pressable>
-            </>
-          ) : (
-            <>
-              <Text style={styles.tituloFormulario}>
-                {modo === "registro" ? "Crear cuenta" : "Accede a tu cuenta"}
-              </Text>
-              {modo === "registro" && (
-                <>
-                  <Campo
-                    label="Usuario"
-                    placeholder="Tu usuario"
-                    value={usuario}
-                    onChangeText={setUsuario}
-                    autoCapitalize="none"
-                  />
-                  <Campo
-                    label="Nombre"
-                    placeholder="Tu nombre"
-                    value={nombre}
-                    onChangeText={setNombre}
-                    autoCapitalize="words"
-                  />
-                </>
-              )}
-              <Campo
-                label="Correo electrónico"
-                placeholder="alex@ejemplo.com"
-                value={correo}
-                onChangeText={setCorreo}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-              />
-              <View style={styles.grupoCampo}>
-                <Text style={styles.etiquetaCampo}>Contraseña</Text>
-                <View style={styles.filaPassword}>
-                  <TextInput
-                    accessibilityLabel="Contraseña"
-                    autoCapitalize="none"
-                    autoComplete={
-                      modo === "registro" ? "new-password" : "password"
-                    }
-                    onChangeText={setPassword}
-                    onSubmitEditing={enviarFormulario}
-                    placeholder="••••••••"
-                    placeholderTextColor={colores.tenue}
-                    secureTextEntry={!mostrarPassword}
-                    style={styles.inputPassword}
-                    value={password}
-                  />
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={
-                      mostrarPassword
-                        ? "Ocultar contraseña"
-                        : "Mostrar contraseña"
-                    }
-                    onPress={() => setMostrarPassword(!mostrarPassword)}
-                    style={styles.botonOjo}
-                  >
-                    <Text style={styles.textoOjo}>
-                      {mostrarPassword ? "Ocultar" : "Ver"}
-                    </Text>
-                  </Pressable>
-                </View>
-              </View>
-
-              <View style={styles.avisoSeguridad}>
-                <Text style={styles.avisoIcono}>✓</Text>
-                <View style={styles.avisoContenido}>
-                  <Text style={styles.avisoTitulo}>Autenticación protegida</Text>
-                  <Text style={styles.avisoTexto}>
-                    Tu cuenta se gestiona de forma segura con Supabase Auth.
-                  </Text>
-                </View>
-              </View>
-
-              <Pressable
-                accessibilityRole="button"
-                disabled={enviando}
-                onPress={enviarFormulario}
-                style={({ pressed }) => [
-                  styles.boton,
-                  pressed && styles.botonPresionado,
-                  enviando && styles.botonDeshabilitado,
-                ]}
-              >
-                {enviando ? (
-                  <ActivityIndicator color={colores.tarjeta} />
-                ) : (
-                  <Text style={styles.textoBoton}>
-                    {modo === "registro" ? "Crear cuenta" : "Iniciar sesión"}
-                  </Text>
-                )}
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                disabled={enviando}
-                onPress={() => {
-                  setModo(modo === "registro" ? "login" : "registro");
-                  setMensaje(null);
-                }}
-                style={styles.enlace}
-              >
-                <Text style={styles.textoEnlace}>
-                  {modo === "registro"
-                    ? "¿Ya tienes una cuenta? Inicia sesión"
-                    : "¿No tienes una cuenta? Regístrate aquí"}
-                </Text>
-              </Pressable>
-            </>
-          )}
-
-          {mensaje && (
-            <Text
-              accessibilityLiveRegion="polite"
-              style={
-                mensaje.tipo === "error" ? styles.error : styles.exito
-              }
-            >
-              {mensaje.texto}
-            </Text>
-          )}
-        </View>
-
-        <View style={styles.pie}>
-          <Text style={styles.pieIcono}>🌱</Text>
-          <Text style={styles.pieTexto}>OCTOPUS HABIT ENGINE</Text>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
-  );
-}
-
-function Campo({
-  label,
-  placeholder,
-  value,
-  onChangeText,
-  ...inputProps
-}) {
-  return (
-    <View style={styles.grupoCampo}>
-      <Text style={styles.etiquetaCampo}>{label}</Text>
-      <TextInput
-        accessibilityLabel={label}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={colores.tenue}
-        style={styles.input}
-        value={value}
-        {...inputProps}
-      />
+      {checked ? (
+        <Icon name="check" size={size * 0.72} color={color} stroke={2.2} />
+      ) : null}
     </View>
   );
 }
 
+/* ------------------------------------------------------------------ */
+/* Campo de texto reutilizable                                         */
+/* ------------------------------------------------------------------ */
+
+function TextField({
+  label,
+  hint,
+  hintColor,
+  icon,
+  iconColor,
+  style,
+  inputStyle,
+  ...inputProps
+}) {
+  return (
+    <View style={styles.field}>
+      <View style={styles.labelRow}>
+        <Text style={styles.label}>{label}</Text>
+        {hint ? (
+          <Text style={[styles.hint, hintColor ? { color: hintColor } : null]}>
+            {hint}
+          </Text>
+        ) : null}
+      </View>
+      <View style={styles.inputShell}>
+        <TextInput
+          style={[styles.input, icon ? styles.inputWithIcon : null, inputStyle]}
+          placeholderTextColor={COLORS.outlineVariant}
+          selectionColor={COLORS.primary}
+          {...inputProps}
+        />
+        {icon ? (
+          <View style={styles.inputIcon} pointerEvents="none">
+            <Icon name={icon} size={20} color={iconColor || COLORS.outline} />
+          </View>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Pantalla                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Pantalla de registro.
+ *
+ * Props (todas opcionales):
+ *  - onBack(): se llama al pulsar la flecha de volver; por defecto `router.back()`.
+ *  - onLogin(): se llama al pulsar "Inicia sesión".
+ *  - onSubmit({ alias, email, password }): recibe los datos ya validados;
+ *    por defecto sólo hace `console.log`.
+ */
+export default function RegistroScreen({
+  onBack = undefined,
+  onLogin = undefined,
+  onSubmit = undefined,
+}) {
+  const [alias, setAlias] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [terms, setTerms] = useState(false);
+  const [passwordVisible, setPasswordVisible] = useState(false);
+
+  const emailValid = isEmailValid(email);
+  const rules = passwordRules(password);
+  const score =
+    Number(rules.length) + Number(rules.symbol) + Number(rules.upper);
+  const passwordsMatch =
+    confirmPassword.length > 0 && password === confirmPassword;
+
+  const canSubmit =
+    alias.trim().length > 0 &&
+    emailValid &&
+    score === 3 &&
+    passwordsMatch &&
+    terms;
+
+  /* --- email: estado en vivo --- */
+  let emailHint = "Requerido";
+  let emailHintColor = COLORS.outline;
+  let emailIcon = "mail";
+  let emailIconColor = COLORS.outline;
+  if (email.length > 0) {
+    if (emailValid) {
+      emailHint = "Válido";
+      emailHintColor = COLORS.tertiary;
+      emailIcon = "check";
+      emailIconColor = COLORS.tertiaryContainer;
+    } else {
+      emailHint = "Inválido";
+      emailHintColor = COLORS.error;
+      emailIcon = "close";
+      emailIconColor = COLORS.error;
+    }
+  }
+
+  /* --- contraseña: medidor --- */
+  const strength = [
+    { label: "Seguridad", color: COLORS.outline, bar: null },
+    { label: "Débil", color: COLORS.secondary, bar: COLORS.secondaryContainer },
+    { label: "Buena", color: COLORS.primary, bar: COLORS.primaryContainer },
+    {
+      label: "Excelente",
+      color: COLORS.tertiary,
+      bar: COLORS.tertiaryContainer,
+    },
+  ][score];
+
+  /* --- confirmación --- */
+  let matchHint = "Sin verificar";
+  let matchHintColor = COLORS.outline;
+  let matchIcon = "lock";
+  let matchIconColor = COLORS.outline;
+  if (confirmPassword.length > 0) {
+    if (passwordsMatch) {
+      matchHint = "Coincide";
+      matchHintColor = COLORS.tertiary;
+      matchIcon = "check";
+      matchIconColor = COLORS.tertiaryContainer;
+    } else {
+      matchHint = "No coincide";
+      matchHintColor = COLORS.error;
+      matchIcon = "close";
+      matchIconColor = COLORS.error;
+    }
+  }
+
+  const requirements = [
+    { key: "length", label: "Mínimo 8 caracteres", done: rules.length },
+    {
+      key: "symbol",
+      label: "Al menos un número o símbolo especial",
+      done: rules.symbol,
+    },
+    { key: "upper", label: "Una letra mayúscula", done: rules.upper },
+  ];
+
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+      return;
+    }
+    router.back();
+  };
+
+  const handleSubmit = () => {
+    if (!canSubmit) return;
+
+    const payload = {
+      alias: alias.trim(),
+      email: email.trim().toLowerCase(),
+      password,
+    };
+
+    if (onSubmit) {
+      onSubmit(payload);
+      return;
+    }
+
+    // Punto de integración con el backend (src/Backend/supabase.js):
+    //
+    //   import { supabase } from '@/Backend/supabase';
+    //   const { data, error } = await supabase.auth.signUp({
+    //     email: payload.email,
+    //     password: payload.password,
+    //     options: { data: { alias: payload.alias } },
+    //   });
+    //
+    console.log("[registro] alta solicitada", payload);
+  };
+
+  return (
+    <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
+      <View style={styles.header}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Volver"
+          hitSlop={8}
+          onPress={handleBack}
+          style={({ pressed }) => [
+            styles.headerButton,
+            pressed && styles.headerButtonPressed,
+          ]}
+        >
+          <Icon name="chevronLeft" size={20} color={COLORS.onSurface} />
+        </Pressable>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          Sign Up
+        </Text>
+        <View style={styles.headerSpacer} />
+      </View>
+
+      <KeyboardAvoidingView
+        style={styles.body}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={64}
+      >
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.heading}>
+            <Text style={styles.title}>Crea tu cuenta</Text>
+            <Text style={styles.subtitle}>
+              Comienza tu viaje hacia una vida organizada junto a Octy
+            </Text>
+          </View>
+
+          <View style={styles.heroCard}>
+            <View style={styles.heroIcon}>
+              <Icon name="spark" size={18} color={COLORS.primary} />
+            </View>
+            <Text style={styles.heroText}>
+              ¡Hola! Soy <Text style={styles.heroStrong}>Octy</Text>. Configura
+              tus credenciales para empezar a sincronizar tus tentáculos
+              productivos.
+            </Text>
+          </View>
+
+          <View style={styles.form}>
+            <TextField
+              label="¿Cómo te llamará Octy?"
+              hint="Nombre o alias"
+              icon="person"
+              value={alias}
+              onChangeText={setAlias}
+              placeholder="Ej. Marina Soler"
+              autoComplete="name"
+              textContentType="name"
+              autoCapitalize="words"
+              returnKeyType="next"
+            />
+
+            <TextField
+              label="Correo Electrónico"
+              hint={emailHint}
+              hintColor={emailHintColor}
+              icon={emailIcon}
+              iconColor={emailIconColor}
+              value={email}
+              onChangeText={setEmail}
+              placeholder="marina@ejemplo.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="email"
+              textContentType="emailAddress"
+              returnKeyType="next"
+            />
+
+            <View style={styles.field}>
+              <View style={styles.labelRow}>
+                <Text style={styles.label}>Contraseña</Text>
+                <Text style={[styles.hint, { color: strength.color }]}>
+                  {strength.label}
+                </Text>
+              </View>
+
+              <View style={styles.inputShell}>
+                <TextInput
+                  style={[styles.input, styles.inputWithRightButton]}
+                  placeholder="Introduce una contraseña segura"
+                  placeholderTextColor={COLORS.outlineVariant}
+                  selectionColor={COLORS.primary}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!passwordVisible}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="new-password"
+                  textContentType="newPassword"
+                  returnKeyType="next"
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    passwordVisible
+                      ? "Ocultar contraseña"
+                      : "Mostrar contraseña"
+                  }
+                  hitSlop={8}
+                  onPress={() => setPasswordVisible((visible) => !visible)}
+                  style={({ pressed }) => [
+                    styles.eyeButton,
+                    pressed && styles.eyeButtonPressed,
+                  ]}
+                >
+                  <Icon
+                    name="eye"
+                    size={20}
+                    color={passwordVisible ? COLORS.onSurface : COLORS.outline}
+                  />
+                </Pressable>
+              </View>
+
+              <View style={styles.strengthTrack}>
+                {[0, 1, 2].map((index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.strengthSegment,
+                      {
+                        backgroundColor:
+                          index < score && strength.bar
+                            ? strength.bar
+                            : INACTIVE_BAR,
+                      },
+                    ]}
+                  />
+                ))}
+              </View>
+
+              <View style={styles.requirementsCard}>
+                {requirements.map((item) => (
+                  <View key={item.key} style={styles.requirementRow}>
+                    <StatusDot checked={item.done} />
+                    <Text
+                      style={[
+                        styles.requirementText,
+                        item.done ? { color: COLORS.tertiary } : null,
+                      ]}
+                    >
+                      {item.label}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            <TextField
+              label="Confirmar Contraseña"
+              hint={matchHint}
+              hintColor={matchHintColor}
+              icon={matchIcon}
+              iconColor={matchIconColor}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              placeholder="Repite tu contraseña"
+              secureTextEntry={!passwordVisible}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="new-password"
+              textContentType="newPassword"
+              returnKeyType="done"
+            />
+
+            <Pressable
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: terms }}
+              accessibilityLabel="Acepto los Términos de Servicio y la Política de Privacidad"
+              onPress={() => setTerms((checked) => !checked)}
+              style={styles.termsRow}
+            >
+              <View style={[styles.checkbox, terms && styles.checkboxChecked]}>
+                {terms ? (
+                  <Icon
+                    name="check"
+                    size={16}
+                    color={COLORS.onPrimary}
+                    stroke={2.2}
+                  />
+                ) : null}
+              </View>
+              <Text style={styles.termsText}>
+                Acepto los{" "}
+                <Text style={styles.termsLink}>Términos de Servicio</Text> y la{" "}
+                <Text style={styles.termsLink}>Política de Privacidad</Text> de
+                Octopus.
+              </Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !canSubmit }}
+              accessibilityLabel="Crear Cuenta"
+              disabled={!canSubmit}
+              onPress={handleSubmit}
+              style={({ pressed }) => [
+                styles.submitButton,
+                !canSubmit && styles.submitButtonDisabled,
+                pressed && canSubmit && styles.submitButtonPressed,
+              ]}
+            >
+              <Text style={styles.submitLabel}>Crear Cuenta</Text>
+              <Icon
+                name="arrowRight"
+                size={18}
+                color={COLORS.onPrimary}
+                stroke={2}
+              />
+            </Pressable>
+          </View>
+
+          <View style={styles.syncCard}>
+            <View style={styles.syncIcon}>
+              <Icon name="cloud" size={18} color={COLORS.primary} />
+            </View>
+            <View style={styles.syncBody}>
+              <Text style={styles.syncTitle}>Sincronización Silenciosa</Text>
+              <Text style={styles.syncText}>
+                Tus datos se sincronizan de forma segura en la nube para
+                mantener a salvo tus proyectos y rachas.
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>¿Ya tienes cuenta?</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Inicia sesión"
+              hitSlop={6}
+              onPress={onLogin || (() => {})}
+              style={({ pressed }) => pressed && styles.footerLinkPressed}
+            >
+              <Text style={styles.footerLink}>Inicia sesión</Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Estilos                                                             */
+/* ------------------------------------------------------------------ */
+
 const styles = StyleSheet.create({
-  pantalla: {
-    flex: 1,
-    backgroundColor: colores.fondo,
-  },
-  contenido: {
-    flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === "ios" ? 48 : 24,
-    paddingBottom: 28,
-  },
-  centrado: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colores.fondo,
-  },
-  textoCarga: {
-    marginTop: 12,
-    color: colores.secundario,
-    fontSize: 15,
-  },
-  encabezado: {
-    height: 52,
+  screen: { flex: 1, backgroundColor: COLORS.surface },
+
+  header: {
+    height: 64,
+    paddingHorizontal: SPACE.margin,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 16,
-  },
-  logo: {
-    width: 30,
-    height: 30,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 15,
-    backgroundColor: colores.primario,
-  },
-  logoTexto: {
-    color: colores.tarjeta,
-    fontSize: 22,
-    fontWeight: "700",
-  },
-  encabezadoTexto: {
-    flex: 1,
-    marginLeft: 10,
-    color: colores.texto,
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  avatar: {
-    width: 34,
-    height: 34,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 17,
-    backgroundColor: "#006591",
-  },
-  avatarTexto: {
-    color: colores.tarjeta,
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  tarjetaBienvenida: {
-    position: "relative",
-    overflow: "hidden",
-    minHeight: 190,
-    marginBottom: 20,
-    padding: 22,
-    borderRadius: 24,
-    backgroundColor: "#f2f3ff",
-  },
-  etiqueta: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 11,
-    paddingVertical: 6,
-    borderRadius: 18,
-    backgroundColor: "#c9e6ff",
-  },
-  puntoActivo: {
-    width: 7,
-    height: 7,
-    marginRight: 7,
-    borderRadius: 4,
-    backgroundColor: colores.primario,
-  },
-  etiquetaTexto: {
-    color: "#004c6e",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.8,
-  },
-  titulo: {
-    maxWidth: "78%",
-    marginTop: 13,
-    color: colores.texto,
-    fontSize: 24,
-    fontWeight: "700",
-    letterSpacing: -0.5,
-  },
-  descripcion: {
-    maxWidth: "76%",
-    marginTop: 7,
-    color: colores.secundario,
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  mascota: {
-    position: "absolute",
-    right: 18,
-    bottom: 20,
-    width: 74,
-    height: 74,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 37,
-    backgroundColor: colores.tarjeta,
-    elevation: 3,
-    shadowColor: "#131b2e",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
+    backgroundColor: "rgba(250, 248, 255, 0.96)",
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
     shadowRadius: 8,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+    zIndex: 10,
   },
-  mascotaIcono: {
-    fontSize: 30,
-  },
-  mascotaNombre: {
-    marginTop: -2,
-    color: "#006591",
-    fontSize: 10,
-    fontWeight: "700",
-  },
-  tarjetaFormulario: {
-    padding: 22,
-    borderRadius: 24,
-    backgroundColor: colores.tarjeta,
-    elevation: 3,
-    shadowColor: "#131b2e",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-  },
-  tituloFormulario: {
-    marginBottom: 18,
-    color: colores.texto,
-    fontSize: 19,
-    fontWeight: "700",
-  },
-  descripcionSesion: {
-    marginBottom: 18,
-    color: colores.secundario,
-    fontSize: 15,
-  },
-  grupoCampo: {
-    marginBottom: 15,
-  },
-  etiquetaCampo: {
-    marginBottom: 7,
-    color: colores.secundario,
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  input: {
-    height: 50,
-    paddingHorizontal: 16,
-    borderRadius: 25,
-    backgroundColor: colores.suave,
-    color: colores.texto,
-    fontSize: 15,
-  },
-  filaPassword: {
-    height: 50,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingLeft: 16,
-    paddingRight: 8,
-    borderRadius: 25,
-    backgroundColor: colores.suave,
-  },
-  inputPassword: {
+  headerTitle: {
+    ...TYPE.headlineSm,
     flex: 1,
-    height: "100%",
-    color: colores.texto,
-    fontSize: 15,
+    textAlign: "center",
+    color: COLORS.onSurface,
   },
-  botonOjo: {
-    minWidth: 48,
-    minHeight: 40,
+  headerButton: {
+    width: 44,
+    height: 44,
+    marginLeft: -SPACE.xs,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
   },
-  textoOjo: {
-    color: colores.tenue,
-    fontSize: 12,
-    fontWeight: "700",
+  headerButtonPressed: { backgroundColor: COLORS.surfaceContainerHigh },
+  headerSpacer: { width: 44 },
+
+  body: { flex: 1 },
+  content: {
+    paddingHorizontal: SPACE.margin,
+    paddingTop: SPACE.md,
+    paddingBottom: SPACE.xl + SPACE.md,
   },
-  avisoSeguridad: {
+
+  heading: { marginBottom: SPACE.lg },
+  title: { ...TYPE.headlineLgMobile, color: COLORS.onSurface },
+  subtitle: {
+    ...TYPE.bodyMd,
+    color: COLORS.onSurfaceVariant,
+    marginTop: SPACE.xs,
+  },
+
+  heroCard: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 2,
-    marginBottom: 17,
-    padding: 12,
-    borderRadius: 16,
-    backgroundColor: "#f2f3ff",
+    gap: SPACE.sm,
+    backgroundColor: COLORS.surfaceContainerLow,
+    borderRadius: RADIUS.lg,
+    padding: SPACE.md,
+    marginBottom: SPACE.md,
+    shadowColor: "#000",
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
   },
-  avisoIcono: {
+  heroIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(14, 165, 233, 0.2)", // primary-container / 20
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heroText: { ...TYPE.bodySm, flex: 1, color: COLORS.onSurfaceVariant },
+  heroStrong: { color: COLORS.onSurface, fontWeight: "600" },
+
+  form: { gap: SPACE.md },
+
+  field: { gap: SPACE.xs },
+  labelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  label: { ...TYPE.labelMd, color: COLORS.onSurface },
+  hint: { ...TYPE.labelSm, color: COLORS.outline },
+
+  inputShell: { justifyContent: "center" },
+  input: {
+    height: 48,
+    paddingHorizontal: SPACE.md,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.surfaceContainerLowest,
+    ...TYPE.bodyMd,
+    color: COLORS.onSurface,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
+  },
+  inputWithIcon: { paddingRight: 48 },
+  inputWithRightButton: { paddingRight: 52 },
+  inputIcon: {
+    position: "absolute",
+    right: SPACE.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  eyeButton: {
+    position: "absolute",
+    right: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  eyeButtonPressed: { backgroundColor: COLORS.surfaceContainerHigh },
+
+  strengthTrack: {
+    flexDirection: "row",
+    gap: SPACE.xs,
+    height: 6,
+    marginTop: SPACE.xs,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.surfaceContainerHigh,
+    overflow: "hidden",
+  },
+  strengthSegment: { flex: 1, borderRadius: RADIUS.full },
+
+  requirementsCard: {
+    gap: 6,
+    marginTop: SPACE.xs,
+    padding: SPACE.sm,
+    borderRadius: RADIUS.lg,
+    backgroundColor: COLORS.surfaceContainerLow,
+  },
+  requirementRow: { flexDirection: "row", alignItems: "center", gap: SPACE.xs },
+  requirementText: { ...TYPE.bodySm, flex: 1, color: COLORS.onSurfaceVariant },
+
+  termsRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: SPACE.sm,
+    marginTop: SPACE.xs,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    marginTop: 2,
+    backgroundColor: COLORS.surfaceContainerHigh,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkboxChecked: { backgroundColor: COLORS.primaryContainer },
+  termsText: {
+    ...TYPE.bodySm,
+    flex: 1,
+    lineHeight: 16,
+    color: COLORS.onSurfaceVariant,
+  },
+  termsLink: { color: COLORS.primary, fontWeight: "600" },
+
+  submitButton: {
+    height: 48,
+    marginTop: SPACE.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: SPACE.xs,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.primaryContainer,
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
+  },
+  submitButtonDisabled: { opacity: 0.4 },
+  submitButtonPressed: { transform: [{ scale: 0.97 }] },
+  submitLabel: { ...TYPE.labelLg, color: COLORS.onPrimary },
+
+  syncCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: SPACE.sm,
+    marginTop: SPACE.lg,
+    padding: SPACE.md,
+    borderRadius: RADIUS.lg,
+    backgroundColor: COLORS.surfaceContainer,
+  },
+  syncIcon: {
     width: 28,
     height: 28,
-    overflow: "hidden",
     borderRadius: 14,
-    backgroundColor: "#6ffbbe",
-    color: "#002113",
-    fontSize: 18,
-    fontWeight: "800",
-    lineHeight: 28,
-    textAlign: "center",
-  },
-  avisoContenido: {
-    flex: 1,
-    marginLeft: 10,
-  },
-  avisoTitulo: {
-    color: colores.verde,
-    fontSize: 11,
-    fontWeight: "800",
-    textTransform: "uppercase",
-  },
-  avisoTexto: {
-    marginTop: 3,
-    color: colores.secundario,
-    fontSize: 11,
-    lineHeight: 16,
-  },
-  boton: {
-    minHeight: 50,
+    backgroundColor: COLORS.surfaceContainerLowest,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 3,
-    borderRadius: 25,
-    backgroundColor: colores.primario,
   },
-  botonPresionado: {
-    opacity: 0.85,
-  },
-  botonDeshabilitado: {
-    opacity: 0.6,
-  },
-  textoBoton: {
-    color: colores.tarjeta,
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  enlace: {
-    alignItems: "center",
-    paddingTop: 18,
-    paddingBottom: 2,
-  },
-  textoEnlace: {
-    color: "#006591",
-    fontSize: 13,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  error: {
-    marginTop: 14,
-    color: colores.error,
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  exito: {
-    marginTop: 14,
-    color: colores.verde,
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  pie: {
+  syncBody: { flex: 1 },
+  syncTitle: { ...TYPE.labelMd, color: COLORS.onSurface },
+  syncText: { ...TYPE.bodySm, marginTop: 2, color: COLORS.onSurfaceVariant },
+
+  footer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 22,
+    gap: SPACE.xs,
+    paddingVertical: SPACE.lg,
   },
-  pieIcono: {
-    marginRight: 6,
-    fontSize: 13,
-  },
-  pieTexto: {
-    color: colores.tenue,
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 1.4,
-  },
+  footerText: { ...TYPE.bodyMd, color: COLORS.onSurfaceVariant },
+  footerLink: { ...TYPE.labelLg, color: COLORS.primary },
+  footerLinkPressed: { opacity: 0.6 },
 });
