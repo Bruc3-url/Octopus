@@ -1,8 +1,7 @@
 export {
-    cerrarSesion,
-    escucharCambiosDeSesion,
-    iniciarSesion,
-    obtenerSesion,
-    registrarUsuario
+  cerrarSesion,
+  escucharCambiosDeSesion,
+  iniciarSesion,
+  obtenerSesion,
+  registrarUsuario,
 } from "./registrar";
-

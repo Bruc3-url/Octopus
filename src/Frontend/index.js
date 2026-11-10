@@ -1,1 +1,1 @@
-const nombre = "";
+export { default } from "./registro";
