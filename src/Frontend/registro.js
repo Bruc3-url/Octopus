@@ -33,6 +33,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { registrarUsuario } from "../Backend";
 
 /* ------------------------------------------------------------------ */
 /* Tokens de diseño (extraídos del tailwind.config del mockup)         */
@@ -519,8 +520,8 @@ function TextField({
  * Props (todas opcionales):
  *  - onBack(): se llama al pulsar la flecha de volver; por defecto `router.back()`.
  *  - onLogin(): se llama al pulsar "Inicia sesión".
- *  - onSubmit({ alias, email, password }): recibe los datos ya validados;
- *    por defecto sólo hace `console.log`.
+ *  - onSubmit({ alias, email, password }): permite reemplazar el registro
+ *    predeterminado cuando se proporciona.
  */
 export default function RegistroScreen({
   onBack = undefined,
@@ -533,6 +534,8 @@ export default function RegistroScreen({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [terms, setTerms] = useState(false);
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [signupFeedback, setSignupFeedback] = useState(null);
 
   const emailValid = isEmailValid(email);
   const rules = passwordRules(password);
@@ -616,8 +619,8 @@ export default function RegistroScreen({
     router.back();
   };
 
-  const handleSubmit = () => {
-    if (!canSubmit) return;
+  const handleSubmit = async () => {
+    if (!canSubmit || isSubmitting) return;
 
     const payload = {
       alias: alias.trim(),
@@ -630,16 +633,61 @@ export default function RegistroScreen({
       return;
     }
 
-    // Punto de integración con el backend (src/Backend/supabase.js):
-    //
-    //   import { supabase } from '@/Backend/supabase';
-    //   const { data, error } = await supabase.auth.signUp({
-    //     email: payload.email,
-    //     password: payload.password,
-    //     options: { data: { alias: payload.alias } },
-    //   });
-    //
-    console.log("[registro] alta solicitada", payload);
+    setSignupFeedback(null);
+    setIsSubmitting(true);
+    try {
+      const { data, error } = await registrarUsuario({
+        alias: payload.alias,
+        correo: payload.email,
+        password: payload.password,
+      });
+
+      if (error) {
+        setSignupFeedback({
+          type: "error",
+          title: "No se pudo crear la cuenta",
+          message: error.message,
+        });
+        return;
+      }
+
+      if (data.user?.identities?.length === 0) {
+        setSignupFeedback({
+          type: "error",
+          title: "El correo ya está registrado",
+          message:
+            "Supabase no creó una cuenta nueva para este correo. Inicia sesión o prueba con un correo diferente.",
+        });
+        return;
+      }
+
+      if (!data.user?.id) {
+        setSignupFeedback({
+          type: "error",
+          title: "No se confirmó la cuenta",
+          message:
+            "Supabase no devolvió un usuario. Verifica el proyecto y vuelve a intentarlo.",
+        });
+        return;
+      }
+
+      setSignupFeedback({
+        type: "success",
+        title: "Cuenta creada",
+        message: `${data.session ? "Tu cuenta está lista para usar." : "Revisa tu correo para confirmar tu cuenta."}\nID del usuario: ${data.user.id}`,
+      });
+    } catch (error) {
+      setSignupFeedback({
+        type: "error",
+        title: "Error de conexión",
+        message:
+          error instanceof Error
+            ? error.message
+            : "No fue posible conectar con el servicio. Inténtalo de nuevo.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -845,17 +893,22 @@ export default function RegistroScreen({
 
             <Pressable
               accessibilityRole="button"
-              accessibilityState={{ disabled: !canSubmit }}
+              accessibilityState={{ disabled: !canSubmit || isSubmitting }}
               accessibilityLabel="Crear Cuenta"
-              disabled={!canSubmit}
+              disabled={!canSubmit || isSubmitting}
               onPress={handleSubmit}
               style={({ pressed }) => [
                 styles.submitButton,
-                !canSubmit && styles.submitButtonDisabled,
-                pressed && canSubmit && styles.submitButtonPressed,
+                (!canSubmit || isSubmitting) && styles.submitButtonDisabled,
+                pressed &&
+                  canSubmit &&
+                  !isSubmitting &&
+                  styles.submitButtonPressed,
               ]}
             >
-              <Text style={styles.submitLabel}>Crear Cuenta</Text>
+              <Text style={styles.submitLabel}>
+                {isSubmitting ? "Creando cuenta..." : "Crear Cuenta"}
+              </Text>
               <Icon
                 name="arrowRight"
                 size={18}
@@ -863,6 +916,37 @@ export default function RegistroScreen({
                 stroke={2}
               />
             </Pressable>
+            {signupFeedback ? (
+              <View
+                style={[
+                  styles.signupFeedback,
+                  signupFeedback.type === "success"
+                    ? styles.signupFeedbackSuccess
+                    : styles.signupFeedbackError,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.signupFeedbackTitle,
+                    signupFeedback.type === "success"
+                      ? styles.signupFeedbackSuccessText
+                      : styles.signupFeedbackErrorText,
+                  ]}
+                >
+                  {signupFeedback.title}
+                </Text>
+                <Text
+                  style={[
+                    styles.signupFeedbackMessage,
+                    signupFeedback.type === "success"
+                      ? styles.signupFeedbackSuccessText
+                      : styles.signupFeedbackErrorText,
+                  ]}
+                >
+                  {signupFeedback.message}
+                </Text>
+              </View>
+            ) : null}
           </View>
 
           <View style={styles.syncCard}>
@@ -1083,6 +1167,18 @@ const styles = StyleSheet.create({
   submitButtonPressed: { transform: [{ scale: 0.97 }] },
   submitLabel: { ...TYPE.labelLg, color: COLORS.onPrimary },
 
+  signupFeedback: {
+    gap: SPACE.xs,
+    marginTop: SPACE.sm,
+    padding: SPACE.md,
+    borderRadius: RADIUS.md,
+  },
+  signupFeedbackSuccess: { backgroundColor: "#e7f5ec" },
+  signupFeedbackError: { backgroundColor: "#ffebee" },
+  signupFeedbackTitle: { ...TYPE.labelMd },
+  signupFeedbackMessage: { ...TYPE.bodySm },
+  signupFeedbackSuccessText: { color: COLORS.tertiary },
+  signupFeedbackErrorText: { color: COLORS.error },
   syncCard: {
     flexDirection: "row",
     alignItems: "flex-start",
