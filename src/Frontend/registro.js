@@ -525,7 +525,7 @@ function TextField({
  */
 export default function RegistroScreen({
   onBack = undefined,
-  onLogin = undefined,
+  onLogin = () => router.push("/login"),
   onSubmit = undefined,
 }) {
   const [alias, setAlias] = useState("");
