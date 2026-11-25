@@ -528,11 +528,11 @@ export default function RegistroScreen({
   onLogin = () => router.push("/login"),
   onSubmit = undefined,
 }) {
-  const [alias, setAlias] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [terms, setTerms] = useState(false);
+  const [alias, setAlias] = useState("OctoUser");
+  const [email, setEmail] = useState("demo@octopus.com");
+  const [password, setPassword] = useState("Octopus123!");
+  const [confirmPassword, setConfirmPassword] = useState("Octopus123!");
+  const [terms, setTerms] = useState(true);
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [signupFeedback, setSignupFeedback] = useState(null);
@@ -676,6 +676,9 @@ export default function RegistroScreen({
         title: "Cuenta creada",
         message: `${data.session ? "Tu cuenta está lista para usar." : "Revisa tu correo para confirmar tu cuenta."}\nID del usuario: ${data.user.id}`,
       });
+      setTimeout(() => {
+        router.replace("/home");
+      }, 1000);
     } catch (error) {
       setSignupFeedback({
         type: "error",
@@ -901,9 +904,9 @@ export default function RegistroScreen({
                 styles.submitButton,
                 (!canSubmit || isSubmitting) && styles.submitButtonDisabled,
                 pressed &&
-                  canSubmit &&
-                  !isSubmitting &&
-                  styles.submitButtonPressed,
+                canSubmit &&
+                !isSubmitting &&
+                styles.submitButtonPressed,
               ]}
             >
               <Text style={styles.submitLabel}>
@@ -968,7 +971,7 @@ export default function RegistroScreen({
               accessibilityRole="button"
               accessibilityLabel="Inicia sesión"
               hitSlop={6}
-              onPress={onLogin || (() => {})}
+              onPress={onLogin || (() => { })}
               style={({ pressed }) => pressed && styles.footerLinkPressed}
             >
               <Text style={styles.footerLink}>Inicia sesión</Text>

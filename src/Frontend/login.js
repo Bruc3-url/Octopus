@@ -27,8 +27,8 @@ const COLORS = {
 };
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("demo@octopus.com");
+  const [password, setPassword] = useState("123456");
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -47,7 +47,7 @@ export default function LoginScreen() {
         return;
       }
 
-      Alert.alert("¡Bienvenido!", "Iniciaste sesión correctamente.");
+      router.replace("/home");
     } catch (error) {
       Alert.alert(
         "No se pudo iniciar sesión",
@@ -159,6 +159,13 @@ export default function LoginScreen() {
                 <Text style={styles.submitLabel}>Iniciar sesión</Text>
               )}
             </Pressable>
+
+            <View style={styles.demoCard}>
+              <Text style={styles.demoTitle}>💡 Datos precargados para prueba rápida</Text>
+              <Text style={styles.demoText}>
+                demo@octopus.com  ·  123456
+              </Text>
+            </View>
           </View>
 
           <View style={styles.footer}>
@@ -297,6 +304,24 @@ const styles = StyleSheet.create({
   },
   submitDisabled: {
     opacity: 0.7,
+  },
+  demoCard: {
+    backgroundColor: "#e0f2fe",
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 14,
+    borderWidth: 1,
+    borderColor: "#bae6fd",
+  },
+  demoTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0369a1",
+    marginBottom: 2,
+  },
+  demoText: {
+    fontSize: 12,
+    color: "#0284c7",
   },
   submitLabel: {
     color: "#ffffff",
