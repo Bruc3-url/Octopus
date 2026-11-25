@@ -161,7 +161,7 @@ export default function LoginScreen() {
             </Pressable>
 
             <View style={styles.demoCard}>
-              <Text style={styles.demoTitle}>💡 Datos precargados para prueba rápida</Text>
+              <Text style={styles.demoTitle}>Datos precargados para prueba rápida</Text>
               <Text style={styles.demoText}>
                 demo@octopus.com  ·  123456
               </Text>

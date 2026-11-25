@@ -193,25 +193,6 @@ export default function NuevoProyectoScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Sub-Header con botón de ayuda */}
-          <View style={styles.subHeader}>
-            <View style={styles.subHeaderLeft}>
-              <Text style={styles.studioLabel}>Octopus Studio</Text>
-              <View style={styles.dotSeparator} />
-              <Text style={styles.phaseLabel}>Fase de Ideación</Text>
-            </View>
-
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Consejos de proyectos"
-              hitSlop={8}
-              onPress={() => setShowInfoModal(true)}
-              style={({ pressed }) => [styles.helpButton, pressed && styles.pressed]}
-            >
-              <Text style={styles.helpButtonText}>?</Text>
-            </Pressable>
-          </View>
-
           {/* Banner Motivacional: Visión de Octy */}
           <View style={styles.motivationBanner}>
             <View style={styles.glowDecor} />
@@ -226,13 +207,8 @@ export default function NuevoProyectoScreen() {
               <View style={styles.motivationTextContainer}>
                 <View style={styles.motivationTitleRow}>
                   <Text style={styles.motivationTitle}>Visión de Octy</Text>
-                  <View style={styles.vitalityTag}>
-                    <Text style={styles.vitalityTagIcon}>⚡</Text>
-                    <Text style={styles.vitalityTagText}>+30 Vitalidad</Text>
-                  </View>
                 </View>
-                <Text style={styles.motivationDesc}>
-                  Los proyectos nutren el fondo marino. Al completar este hito,
+                <Text style={styles.motivationDesc}>Al completar este hito,
                   Octy comenzará a construir un nuevo arrecife coral.
                 </Text>
               </View>
@@ -253,9 +229,6 @@ export default function NuevoProyectoScreen() {
                 </View>
                 <View style={styles.cardHeaderTitles}>
                   <Text style={styles.cardTitle}>Nombre del proyecto</Text>
-                  <Text style={styles.cardSubtitle} numberOfLines={1}>
-                    {name.trim() ? name : "Lanzamiento, propósito e identidad"}
-                  </Text>
                 </View>
               </View>
               <Text style={styles.chevronIcon}>
@@ -324,34 +297,6 @@ export default function NuevoProyectoScreen() {
                       })}
                     </View>
                   </ScrollView>
-                </View>
-
-                {/* Selector de tonalidad marina */}
-                <View style={styles.fieldGroup}>
-                  <View style={styles.labelRow}>
-                    <Text style={styles.label}>Tonalidad marina</Text>
-                    <Text style={styles.colorSelectedName}>
-                      {selectedColor.name}
-                    </Text>
-                  </View>
-                  <View style={styles.paletteRow}>
-                    {PALETTE.map((pal) => {
-                      const isSelected = selectedColor.color === pal.color;
-                      return (
-                        <Pressable
-                          key={pal.color}
-                          onPress={() => setSelectedColor(pal)}
-                          style={[
-                            styles.colorBtn,
-                            { backgroundColor: pal.color },
-                            !isSelected && styles.colorBtnDim,
-                          ]}
-                        >
-                          {isSelected && <Text style={styles.checkWhite}>✓</Text>}
-                        </Pressable>
-                      );
-                    })}
-                  </View>
                 </View>
               </View>
             )}
@@ -491,7 +436,7 @@ export default function NuevoProyectoScreen() {
                   <Text style={styles.cardTitle}>Subtareas e Hitos Clave</Text>
                   <Text style={styles.cardSubtitle} numberOfLines={1}>
                     {subtasks.length === 0
-                      ? "Sin subtareas (opcional)"
+                      ? "Sin subtareas añadidas"
                       : `${subtasks.length} ${subtasks.length === 1 ? "subtarea registrada" : "subtareas registradas"}`}
                   </Text>
                 </View>
@@ -503,26 +448,11 @@ export default function NuevoProyectoScreen() {
 
             {expandedCards.card3 && (
               <View style={styles.accordionBody}>
-                {/* Barra de avance estimado */}
-                <View style={styles.progressSummaryBox}>
-                  <View style={styles.progressSummaryHeader}>
-                    <Text style={styles.progressSummaryTitle}>
-                      📈 Avance estimado: 0% completado
-                    </Text>
-                    <Text style={styles.progressSummaryCount}>
-                      0 de {subtasks.length} subtareas
-                    </Text>
-                  </View>
-                  <View style={styles.progressTrack}>
-                    <View style={[styles.progressFill, { width: "0%" }]} />
-                  </View>
-                </View>
-
                 {/* Lista de subtareas (vacía inicialmente según instrucción del usuario) */}
                 {subtasks.length === 0 ? (
                   <View style={styles.emptySubtasksNote}>
                     <Text style={styles.emptySubtasksText}>
-                      No hay subtareas agregadas aún. Puedes crear el proyecto así o pulsar el botón para añadir los primeros hitos.
+                      Agrega subtareas a tu proyecto presionando en el boton Añadir subtarea.
                     </Text>
                   </View>
                 ) : (
@@ -544,9 +474,6 @@ export default function NuevoProyectoScreen() {
                               updateSubtaskTitle(st.id, text)
                             }
                           />
-                          <Text style={styles.subtaskWeightText}>
-                            📊 {subtaskWeight}% de avance del proyecto
-                          </Text>
                         </View>
                         <Pressable
                           accessibilityRole="button"
@@ -580,7 +507,7 @@ export default function NuevoProyectoScreen() {
                   <Text style={styles.tipIcon}>💡</Text>
                   <Text style={styles.tipText}>
                     Cada subtarea completada aumentará proporcionalmente el
-                    avance del proyecto y alimentará la vitalidad de Octy.
+                    avance del proyecto.
                   </Text>
                 </View>
               </View>
@@ -663,9 +590,6 @@ export default function NuevoProyectoScreen() {
               <View>
                 <Text style={styles.summaryRewardTitle}>
                   Recompensas al Crear
-                </Text>
-                <Text style={styles.summaryRewardSubtitle}>
-                  Activación de ecosistema instantánea
                 </Text>
               </View>
             </View>

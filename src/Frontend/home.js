@@ -18,6 +18,7 @@ import {
   subscribeTasks,
   toggleTareaCompletada,
 } from "../Backend";
+import FloatingSpeedDial from "./FloatingSpeedDial";
 
 /* ------------------------------------------------------------------ */
 /* Tokens de color extraídos de la configuración de diseño            */
@@ -135,10 +136,6 @@ export default function HomeScreen() {
     ]);
   };
 
-  const handleNewTask = () => {
-    router.push("/nueva-tarea");
-  };
-
   const completedCount = tasks.filter((t) => t.completed).length;
   const pendingCount = tasks.length - completedCount;
   const completionPercent = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
@@ -226,9 +223,6 @@ export default function HomeScreen() {
             >
               Hola, Alex 👋
             </Text>
-            <Text style={styles.greetingSubtitle}>
-              Estás a un paso de completar tu objetivo del día.
-            </Text>
           </View>
 
           {/* Banner de progreso de racha */}
@@ -295,7 +289,6 @@ export default function HomeScreen() {
             {/* Metadatos y vitalidad */}
             <View style={styles.petMeta}>
               <View style={styles.petStatusPill}>
-                <Text style={styles.petStatusSparkle}>✨</Text>
                 <Text style={styles.petStatusText}>Octy está Radiante</Text>
               </View>
 
@@ -310,7 +303,6 @@ export default function HomeScreen() {
                 <View style={styles.vitalColumn}>
                   <View style={styles.vitalHeader}>
                     <Text style={styles.vitalLabel}>Energía</Text>
-                    <Text style={styles.vitalValuePrimary}>85%</Text>
                   </View>
                   <View style={styles.vitalTrack}>
                     <View style={[styles.vitalFillPrimary, { width: "85%" }]} />
@@ -320,7 +312,6 @@ export default function HomeScreen() {
                 <View style={styles.vitalColumn}>
                   <View style={styles.vitalHeader}>
                     <Text style={styles.vitalLabel}>Ánimo</Text>
-                    <Text style={styles.vitalValueTertiary}>Alto</Text>
                   </View>
                   <View style={styles.vitalTrack}>
                     <View style={[styles.vitalFillTertiary, { width: "90%" }]} />
@@ -523,22 +514,6 @@ export default function HomeScreen() {
             </View>
           ))}
         </View>
-
-        {/* ----------------- 5. Botón de Acción Prominente ----------------- */}
-        <View style={styles.actionButtonContainer}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Nueva tarea"
-            onPress={handleNewTask}
-            style={({ pressed }) => [
-              styles.newTaskButton,
-              pressed && styles.newTaskButtonPressed,
-            ]}
-          >
-            <Text style={styles.newTaskButtonIcon}>+</Text>
-            <Text style={styles.newTaskButtonLabel}>Nueva tarea</Text>
-          </Pressable>
-        </View>
       </ScrollView>
 
       {/* ----------------- Barra Inferior de Navegación con Safe Area ----------------- */}
@@ -642,6 +617,8 @@ export default function HomeScreen() {
           </Text>
         </Pressable>
       </View>
+
+      <FloatingSpeedDial />
     </SafeAreaView>
   );
 }
@@ -1183,39 +1160,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.onSurfaceVariant,
     fontWeight: "700",
-  },
-
-  /* 5. Botón de acción */
-  actionButtonContainer: {
-    marginTop: 4,
-  },
-  newTaskButton: {
-    backgroundColor: COLORS.primaryContainer,
-    borderRadius: 25,
-    paddingVertical: 13,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  newTaskButtonPressed: {
-    transform: [{ scale: 0.98 }],
-    backgroundColor: COLORS.primary,
-  },
-  newTaskButtonIcon: {
-    fontSize: 18,
-    color: "#ffffff",
-    fontWeight: "700",
-  },
-  newTaskButtonLabel: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#ffffff",
   },
 
   /* Barra inferior fija */

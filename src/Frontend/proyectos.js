@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { cerrarSesion, obtenerProyectos, subscribeProyectos } from "../Backend";
+import FloatingSpeedDial from "./FloatingSpeedDial";
 
 const COLORS = {
   primary: "#006591",
@@ -111,13 +112,10 @@ export default function ProyectosScreen() {
             </View>
             <View style={styles.bannerTextContainer}>
               <View style={styles.bannerTitleRow}>
-                <Text style={styles.bannerTitle}>Arrecifes de Productividad</Text>
-                <View style={styles.activeBadge}>
-                  <Text style={styles.activeBadgeText}>{projects.length} activos</Text>
-                </View>
+                <Text style={styles.bannerTitle}>Productividad</Text>
               </View>
               <Text style={styles.bannerSubtitle}>
-                Los proyectos construyen hábitats para Octy. Cada hito completado florece en su bahía marina.
+                Los proyectos completados construyen hábitats para Octy.
               </Text>
             </View>
           </View>
@@ -209,22 +207,6 @@ export default function ProyectosScreen() {
             })
           )}
         </View>
-
-        {/* Botón Prominente: Crear nuevo proyecto */}
-        <View style={styles.actionContainer}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Crear nuevo proyecto"
-            onPress={() => router.push("/nuevo-proyecto")}
-            style={({ pressed }) => [
-              styles.createProjectButton,
-              pressed && styles.createProjectButtonPressed,
-            ]}
-          >
-            <Text style={styles.createProjectIcon}>+</Text>
-            <Text style={styles.createProjectLabel}>Nuevo Proyecto</Text>
-          </Pressable>
-        </View>
       </ScrollView>
 
       {/* ----------------- Barra Inferior de Navegación ----------------- */}
@@ -261,7 +243,7 @@ export default function ProyectosScreen() {
 
         <Pressable
           style={styles.navItem}
-          onPress={() => {}}
+          onPress={() => { }}
         >
           <Text
             style={[
@@ -327,6 +309,8 @@ export default function ProyectosScreen() {
           </Text>
         </Pressable>
       </View>
+
+      <FloatingSpeedDial />
     </SafeAreaView>
   );
 }
@@ -601,39 +585,6 @@ const styles = StyleSheet.create({
   progressBarFill: {
     height: "100%",
     borderRadius: 3,
-  },
-
-  /* Botón de acción */
-  actionContainer: {
-    marginTop: 4,
-  },
-  createProjectButton: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 25,
-    paddingVertical: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  createProjectButtonPressed: {
-    transform: [{ scale: 0.98 }],
-    backgroundColor: COLORS.onPrimaryContainer,
-  },
-  createProjectIcon: {
-    fontSize: 18,
-    color: "#ffffff",
-    fontWeight: "700",
-  },
-  createProjectLabel: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#ffffff",
   },
 
   /* Barra inferior fija */

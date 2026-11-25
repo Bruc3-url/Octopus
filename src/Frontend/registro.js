@@ -731,17 +731,6 @@ export default function RegistroScreen({
             </Text>
           </View>
 
-          <View style={styles.heroCard}>
-            <View style={styles.heroIcon}>
-              <Icon name="spark" size={18} color={COLORS.primary} />
-            </View>
-            <Text style={styles.heroText}>
-              ¡Hola! Soy <Text style={styles.heroStrong}>Octy</Text>. Configura
-              tus credenciales para empezar a sincronizar tus tentáculos
-              productivos.
-            </Text>
-          </View>
-
           <View style={styles.form}>
             <TextField
               label="¿Cómo te llamará Octy?"
@@ -950,19 +939,6 @@ export default function RegistroScreen({
                 </Text>
               </View>
             ) : null}
-          </View>
-
-          <View style={styles.syncCard}>
-            <View style={styles.syncIcon}>
-              <Icon name="cloud" size={18} color={COLORS.primary} />
-            </View>
-            <View style={styles.syncBody}>
-              <Text style={styles.syncTitle}>Sincronización Silenciosa</Text>
-              <Text style={styles.syncText}>
-                Tus datos se sincronizan de forma segura en la nube para
-                mantener a salvo tus proyectos y rachas.
-              </Text>
-            </View>
           </View>
 
           <View style={styles.footer}>
