@@ -671,14 +671,18 @@ export default function RegistroScreen({
         return;
       }
 
+      const hasSession = Boolean(data.session);
       setSignupFeedback({
         type: "success",
-        title: "Cuenta creada",
-        message: `${data.session ? "Tu cuenta está lista para usar." : "Revisa tu correo para confirmar tu cuenta."}\nID del usuario: ${data.user.id}`,
+        title: hasSession ? "Cuenta creada" : "Confirma tu correo",
+        message: hasSession
+          ? "Tu cuenta está lista para usar."
+          : "Revisa tu correo y abre el enlace de confirmación. Cuando confirmes la cuenta, vuelve e inicia sesión. Revisa también la carpeta de spam.",
       });
-      setTimeout(() => {
+
+      if (hasSession) {
         router.replace("/home");
-      }, 1000);
+      }
     } catch (error) {
       setSignupFeedback({
         type: "error",

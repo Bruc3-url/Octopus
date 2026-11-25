@@ -2,7 +2,6 @@ import { router } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,7 +12,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { iniciarSesion } from "../Backend/index.js";
+import { iniciarSesion, reenviarConfirmacion } from "../Backend/registrar";
 
 const COLORS = {
   primary: "#006591",
@@ -27,15 +26,20 @@ const COLORS = {
 };
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState("demo@octopus.com");
-  const [password, setPassword] = useState("123456");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResendingConfirmation, setIsResendingConfirmation] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
 
   const handleSubmit = async () => {
     if (isSubmitting) return;
 
     setIsSubmitting(true);
+    setFeedback(null);
+    setNeedsConfirmation(false);
     try {
       const { error } = await iniciarSesion({
         correo: email,
@@ -43,18 +47,62 @@ export default function LoginScreen() {
       });
 
       if (error) {
-        Alert.alert("No se pudo iniciar sesión", error.message);
+        const message = error.message || "Inténtalo de nuevo.";
+        const isEmailNotConfirmed =
+          error.code === "email_not_confirmed" ||
+          message.toLowerCase().includes("email not confirmed");
+
+        setFeedback({ type: "error", message });
+        setNeedsConfirmation(isEmailNotConfirmed);
         return;
       }
 
       router.replace("/home");
     } catch (error) {
-      Alert.alert(
-        "No se pudo iniciar sesión",
-        error instanceof Error ? error.message : "Inténtalo de nuevo.",
-      );
+      setFeedback({
+        type: "error",
+        message:
+          error instanceof Error ? error.message : "Inténtalo de nuevo.",
+      });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    if (isResendingConfirmation) return;
+
+    if (!email.trim()) {
+      setFeedback({
+        type: "error",
+        message: "Escribe tu correo electrónico para reenviar la confirmación.",
+      });
+      return;
+    }
+
+    setIsResendingConfirmation(true);
+    setFeedback(null);
+    try {
+      const { error } = await reenviarConfirmacion(email);
+
+      if (error) {
+        setFeedback({ type: "error", message: error.message });
+        return;
+      }
+
+      setFeedback({
+        type: "success",
+        message:
+          "Solicitud enviada. Revisa tu bandeja de entrada y la carpeta de spam.",
+      });
+    } catch (error) {
+      setFeedback({
+        type: "error",
+        message:
+          error instanceof Error ? error.message : "Inténtalo de nuevo.",
+      });
+    } finally {
+      setIsResendingConfirmation(false);
     }
   };
 
@@ -103,7 +151,11 @@ export default function LoginScreen() {
               autoComplete="email"
               autoCorrect={false}
               keyboardType="email-address"
-              onChangeText={setEmail}
+              onChangeText={(value) => {
+                setEmail(value);
+                setFeedback(null);
+                setNeedsConfirmation(false);
+              }}
               placeholder="alex@ejemplo.com"
               placeholderTextColor={COLORS.outline}
               returnKeyType="next"
@@ -142,6 +194,20 @@ export default function LoginScreen() {
               value={password}
             />
 
+            {feedback ? (
+              <Text
+                accessibilityRole="alert"
+                style={[
+                  styles.feedback,
+                  feedback.type === "success"
+                    ? styles.feedbackSuccess
+                    : styles.feedbackError,
+                ]}
+              >
+                {feedback.message}
+              </Text>
+            ) : null}
+
             <Pressable
               accessibilityRole="button"
               accessibilityState={{ disabled: isSubmitting }}
@@ -160,12 +226,30 @@ export default function LoginScreen() {
               )}
             </Pressable>
 
-            <View style={styles.demoCard}>
-              <Text style={styles.demoTitle}>💡 Datos precargados para prueba rápida</Text>
-              <Text style={styles.demoText}>
-                demo@octopus.com  ·  123456
-              </Text>
-            </View>
+            {needsConfirmation ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ disabled: isResendingConfirmation }}
+                disabled={isResendingConfirmation}
+                onPress={handleResendConfirmation}
+                style={({ pressed }) => [
+                  styles.resendButton,
+                  pressed &&
+                    !isResendingConfirmation &&
+                    styles.resendButtonPressed,
+                  isResendingConfirmation && styles.submitDisabled,
+                ]}
+              >
+                {isResendingConfirmation ? (
+                  <ActivityIndicator color={COLORS.primary} />
+                ) : (
+                  <Text style={styles.resendLabel}>
+                    Reenviar correo de confirmación
+                  </Text>
+                )}
+              </Pressable>
+            ) : null}
+
           </View>
 
           <View style={styles.footer}>
@@ -305,23 +389,31 @@ const styles = StyleSheet.create({
   submitDisabled: {
     opacity: 0.7,
   },
-  demoCard: {
-    backgroundColor: "#e0f2fe",
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 14,
-    borderWidth: 1,
-    borderColor: "#bae6fd",
+  feedback: {
+    fontSize: 13,
+    lineHeight: 19,
+    marginBottom: 14,
   },
-  demoTitle: {
+  feedbackError: {
+    color: COLORS.error,
+  },
+  feedbackSuccess: {
+    color: "#18794e",
+  },
+  resendButton: {
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 8,
+  },
+  resendButtonPressed: {
+    opacity: 0.65,
+  },
+  resendLabel: {
+    color: COLORS.primary,
     fontSize: 13,
     fontWeight: "700",
-    color: "#0369a1",
-    marginBottom: 2,
-  },
-  demoText: {
-    fontSize: 12,
-    color: "#0284c7",
+    textAlign: "center",
   },
   submitLabel: {
     color: "#ffffff",
